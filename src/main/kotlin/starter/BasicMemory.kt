@@ -9,9 +9,13 @@ import screeps.utils.memory.memory
 
 /* Creep.memory */
 var CreepMemory.building: Boolean by memory { false }
+var CreepMemory.upgrading: Boolean by memory { false }
 var CreepMemory.pause: Int by memory { 0 }
 var CreepMemory.role by memory(Role.UNASSIGNED)
-
+var CreepMemory.delivery by memory(Delivery.UNASSIGNED)
+var CreepMemory.minionType by memory(MinionType.UNASSIGNED)
+var CreepMemory.sourceX: Int by memory {0}
+var CreepMemory.sourceY: Int by memory {0}
 
 /* Rest of the persistent memory structures.
 * These set an unused test variable to 0. This is done to illustrate the how to add variables to

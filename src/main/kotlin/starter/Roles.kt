@@ -4,45 +4,15 @@ import screeps.api.*
 import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
+import screeps.creeps.building
+import screeps.creeps.pause
+import screeps.creeps.role
+import screeps.creeps.roles.Role
+import screeps.creeps.roles.Role.DEFENSE_BUILDER
+import screeps.creeps.roles.Role.REPAIRER
+import screeps.creeps.upgrading
 
-enum class Role {
-    UNASSIGNED,
-    HARVESTER,
-    BUILDER,
-    MINER,
-    HAULER,
-    UPGRADER,
-    GUARDIAN
-}
 
-enum class Delivery {
-    UNASSIGNED,
-    SPAWNER,
-    UPGRADE,
-    BUILD
-}
-
-enum class MinionType(val bodyPartPriorities: Map<BodyPartConstant, Int>, val validRoles: List<Role>) {
-    UNASSIGNED(emptyMap(), emptyList()),
-    GENERIC(mapOf(
-        WORK to 1,
-        CARRY to 1,
-        MOVE to 1
-    ), listOf(Role.HARVESTER, Role.BUILDER, Role.UPGRADER)),
-    HAULER(mapOf(
-        WORK to 1,
-        CARRY to 1,
-        MOVE to 2
-    ), listOf(Role.HARVESTER, Role.BUILDER, Role.UPGRADER)),
-    MINER(mapOf(
-        WORK to 4,
-        MOVE to 1
-    ), listOf(Role.MINER)),
-    GUARDIAN(mapOf(
-        ATTACK to 2,
-        MOVE to 1
-    ), listOf(Role.GUARDIAN))
-}
 
 fun Creep.mine(controller: StructureController) {
 
@@ -83,7 +53,7 @@ fun Creep.mine(controller: StructureController) {
 
 private fun Creep.isContainerClaimed(container: Structure): Boolean {
     val creepsOnContainer = container.room.find(FIND_MY_CREEPS).filter { (it.memory.role == Role.MINER) && (it.id != this.id) && (it.pos.isEqualTo(container.pos)) }
-    return creepsOnContainer.count() > 1
+    return creepsOnContainer.isNotEmpty()
 }
 
 fun Creep.guard(controller: StructureController) {
@@ -130,6 +100,8 @@ fun Creep.pause() {
     }
 }
 
+val CONSTRUCTION_SITE_PRIORITY = listOf(STRUCTURE_TOWER, STRUCTURE_CONTAINER, STRUCTURE_EXTENSION, STRUCTURE_WALL, STRUCTURE_RAMPART )
+
 fun Creep.build(assignedRoom: Room = this.room) {
     if (memory.building && store[RESOURCE_ENERGY] == 0) {
         memory.building = false
@@ -143,11 +115,58 @@ fun Creep.build(assignedRoom: Room = this.room) {
     if (memory.building) {
         val targets = assignedRoom.find(FIND_MY_CONSTRUCTION_SITES)
         if (targets.isNotEmpty()) {
-            val buildResult = build(targets[0])
+            var firstTarget = targets[0]
+            for (sc in CONSTRUCTION_SITE_PRIORITY) {
+                val typedTargets = targets.filter { it.structureType == sc }
+                if (typedTargets.isNotEmpty()) {
+                    firstTarget = typedTargets[0]
+                    break;
+                }
+            }
+            val buildResult = build(firstTarget)
             if (buildResult == ERR_NOT_IN_RANGE) {
-                moveTo(targets[0].pos)
+                moveTo(firstTarget.pos)
             } else if (buildResult != OK) {
                 sayMessage("Failed to build target ${targets[0]} with result $buildResult")
+            }
+        }
+    } else {
+        harvestClosestSource()
+    }
+}
+
+val NORMAL_REPAIR_PRIORITIES = listOf(STRUCTURE_SPAWN, STRUCTURE_TOWER, STRUCTURE_CONTAINER, STRUCTURE_ROAD, STRUCTURE_EXTENSION)
+val DEFENSE_REPAIR_PRIORITIES = listOf(STRUCTURE_WALL, STRUCTURE_RAMPART)
+
+fun Creep.repair(assignedRoom: Room = this.room) {
+    if (memory.building && store[RESOURCE_ENERGY] == 0) {
+        memory.building = false
+        sayMessage("is harvesting")
+    }
+    if (!memory.building && store[RESOURCE_ENERGY] == store.getCapacity()) {
+        memory.building = true
+        sayMessage("is repairing")
+    }
+
+    val priorities = when (memory.role) {
+        REPAIRER -> NORMAL_REPAIR_PRIORITIES
+        DEFENSE_BUILDER -> DEFENSE_REPAIR_PRIORITIES
+        else -> NORMAL_REPAIR_PRIORITIES
+    }
+
+    if (memory.building) {
+        val repairPriorities = assignedRoom.find(FIND_STRUCTURES)
+            .asSequence()
+            .filter { priorities.contains(it.structureType) }
+            .filter { it.hits < it.hitsMax }
+            .map { Triple(it, it.hitsMax.toFloat() / it.hits.toFloat(), it.pos.getRangeTo(this.pos).toFloat()) }
+            .sortedByDescending { it.second / it.third }
+            .toList()
+
+        val repairTargets = repairPriorities.map { it.first }
+        if(repairTargets.isNotEmpty()) {
+            if (repair(repairTargets[0]) == ERR_NOT_IN_RANGE) {
+                moveTo(repairTargets[0])
             }
         }
     } else {
@@ -168,7 +187,7 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
 
     if (memory.building) {
         val targets = toRoom.find(FIND_MY_STRUCTURES)
-            .filter { (it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
+            .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
             .map { it.unsafeCast<StoreOwner>() }
             .filter { it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY) }
 
@@ -210,7 +229,13 @@ private fun Creep.harvestClosestSource() {
     } else {
         val containers = this.room.find(FIND_STRUCTURES)
             .filter { it.structureType == STRUCTURE_CONTAINER }
+            .map { it.unsafeCast<StructureContainer>()}
+            .filter { it.store.getUsedCapacity() > 50}
             .toTypedArray()
+
+        if(containers.isNotEmpty()) {
+            sayMessage("Containers for harvesting: $containers")
+        }
 
         if (containers.isNotEmpty()) {
             val closestContainer = this.pos.findClosestByRange(containers).unsafeCast<StructureContainer>()

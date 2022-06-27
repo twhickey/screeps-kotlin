@@ -1,18 +1,16 @@
-package Flags
+package screeps.flags
 
-import createConstructionSite
+import screeps.createConstructionSite
 import screeps.api.*
 import screeps.api.structures.StructureSpawn
 
 fun handleFlags(mainSpawn: StructureSpawn) {
-    if ((Game.time % 50) != 0) {
-        return
-    }
+    if ((Game.time % 50) != 0) return
 
     val flags = mainSpawn.room.find(FIND_FLAGS)
     for (flag in flags) {
         val ft = getFlagType(flag)
-        var removeFlag: Boolean = when(ft) {
+        val removeFlag: Boolean = when(ft) {
             FlagTypes.NONE -> false
             FlagTypes.CONTAINER -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_CONTAINER)
             FlagTypes.EXTENSION -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_EXTENSION)

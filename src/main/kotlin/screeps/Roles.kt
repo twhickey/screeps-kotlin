@@ -1,59 +1,19 @@
-package starter
+package screeps
 
 import screeps.api.*
-import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
+import screeps.creeps.behaviors.Mine
 import screeps.creeps.building
 import screeps.creeps.pause
 import screeps.creeps.role
-import screeps.creeps.roles.Role
 import screeps.creeps.roles.Role.DEFENSE_BUILDER
 import screeps.creeps.roles.Role.REPAIRER
 import screeps.creeps.upgrading
 
-
-
 fun Creep.mine(controller: StructureController) {
-
-    val containers = controller.room.find(FIND_STRUCTURES)
-        .filter { it.structureType == STRUCTURE_CONTAINER }
-        .filter { !isContainerClaimed(it) }
-        .toTypedArray()
-
-    val closestContainer = this.pos.findClosestByPath(containers)
-    if (closestContainer != null) {
-          if (memory.building && !this.pos.isEqualTo(closestContainer.pos)) {
-            memory.building = false
-              sayMessage("Is moving to container")
-        } else if (!memory.building && this.pos.isEqualTo(closestContainer.pos)) {
-            sayMessage("Building now. My pos: $pos; closestContainer: $closestContainer at ${closestContainer.pos}")
-            memory.building = true
-        }
-    } else {
-        pause()
-        sayMessage("Pausing, no container found")
-    }
-
-    if (memory.building) {
-        val sources = controller.room.find(FIND_SOURCES)
-        val closestSource = this.pos.findClosestByRange(sources)
-        if (closestSource != null) {
-            val result = harvest(closestSource)
-            if (result != OK) {
-                sayMessage("Failed to harvest source $closestSource with result $result")
-            }
-        }
-    } else if (closestContainer != null) {
-        moveTo(closestContainer)
-    } else {
-        pause()
-    }
-}
-
-private fun Creep.isContainerClaimed(container: Structure): Boolean {
-    val creepsOnContainer = container.room.find(FIND_MY_CREEPS).filter { (it.memory.role == Role.MINER) && (it.id != this.id) && (it.pos.isEqualTo(container.pos)) }
-    return creepsOnContainer.isNotEmpty()
+    Mine.update(this)
+    Mine.execute(this)
 }
 
 fun Creep.guard(controller: StructureController) {
@@ -253,8 +213,4 @@ private fun Creep.harvestClosestSource() {
             }
         }
     }
-}
-
-private fun Creep.sayMessage(msg: String) {
-    console.log("Creep ${this.name}: $msg")
 }

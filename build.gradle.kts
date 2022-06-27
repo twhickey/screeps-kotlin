@@ -5,7 +5,8 @@ import javax.net.ssl.*
 
 
 plugins {
-    kotlin("js") version "1.6.10"
+    kotlin("js") version "1.7.0"
+    /*kotlin("plugin.serialization") version "1.7.0"*/
 }
 
 repositories {
@@ -14,6 +15,7 @@ repositories {
 
 dependencies {
     implementation("io.github.exav:screeps-kotlin-types:1.13.0")
+    /*implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")*/
     testImplementation(kotlin("test-js"))
 }
 
@@ -142,7 +144,6 @@ tasks.register("deploy") {
         connection.disconnect()
 
     }
-
 }
 
 private object TrustAllTrustManager : X509TrustManager {

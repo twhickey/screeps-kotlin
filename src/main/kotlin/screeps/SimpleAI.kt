@@ -1,20 +1,13 @@
-package starter
+package screeps
 
-import Flags.FlagTypes
-import Flags.handleFlags
-import getCreepParts
+import screeps.flags.handleFlags
 import screeps.api.*
-import screeps.api.structures.Structure
 import screeps.api.structures.StructureSpawn
-import screeps.api.structures.StructureTower
 import screeps.creeps.MinionType
 import screeps.creeps.minionType
 import screeps.creeps.role
 import screeps.creeps.roles.Role
-import screeps.creeps.targetId
 import screeps.utils.isEmpty
-import screeps.utils.lazyPerTick
-import screeps.utils.toMap
 import screeps.utils.unsafe.delete
 import screeps.utils.unsafe.jsObject
 import kotlin.math.max
@@ -43,7 +36,6 @@ fun gameLoop() {
         }
     }
 }
-
 
 private fun spawnCreeps(
         creeps: Array<Creep>,

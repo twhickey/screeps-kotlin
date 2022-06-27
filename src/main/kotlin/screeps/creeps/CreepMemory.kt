@@ -2,7 +2,6 @@ package screeps.creeps
 import screeps.api.CreepMemory
 import screeps.creeps.roles.Role
 import screeps.utils.memory.memory
-import starter.MinionType
 
 var CreepMemory.state by memory(CreepState.UNKNOWN)
 var CreepMemory.targetId: String? by memory()

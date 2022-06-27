@@ -1,3 +1,5 @@
+package screeps
+
 import screeps.api.*
 import screeps.api.structures.StructureSpawn
 import screeps.creeps.MinionType
@@ -22,4 +24,8 @@ fun createConstructionSite(mainSpawn: StructureSpawn, pos: RoomPosition, type: S
         console.log("Failed to create $type at $pos with error $result")
     }
     return (result == OK)
+}
+
+fun Creep.sayMessage(msg: String) {
+    console.log("Creep ${this.name}: $msg")
 }

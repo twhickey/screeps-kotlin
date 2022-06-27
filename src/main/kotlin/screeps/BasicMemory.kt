@@ -1,4 +1,4 @@
-package starter
+package screeps
 
 import screeps.api.*
 import screeps.utils.memory.memory

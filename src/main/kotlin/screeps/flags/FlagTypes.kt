@@ -1,4 +1,4 @@
-package Flags
+package screeps.flags
 
 import screeps.api.Flag
 

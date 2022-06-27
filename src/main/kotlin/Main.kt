@@ -1,4 +1,4 @@
-import starter.gameLoop
+import screeps.gameLoop
 
 /**
  * Entry point

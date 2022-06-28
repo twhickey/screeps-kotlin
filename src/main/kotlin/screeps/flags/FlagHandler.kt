@@ -18,6 +18,7 @@ fun handleFlags(mainSpawn: StructureSpawn) {
             FlagTypes.ROAD -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_ROAD)
             FlagTypes.RAMPART -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_RAMPART)
             FlagTypes.WALL -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_WALL)
+            FlagTypes.STORAGE -> createConstructionSite(mainSpawn, flag.pos, STRUCTURE_STORAGE)
             FlagTypes.DESTROY -> {
                 val structuresAtFlag = mainSpawn.room.getPositionAt(flag.pos.x, flag.pos.y)!!.lookFor(LOOK_STRUCTURES)
                 var result = OK

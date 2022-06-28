@@ -10,7 +10,8 @@ enum class FlagTypes(val prefix: String) {
     ROAD("Road"),
     TOWER("Tower"),
     RAMPART("Rampart"),
-    WALL("Wall")
+    WALL("Wall"),
+    STORAGE("Storage")
 }
 
 fun getFlagType(flag: Flag) : FlagTypes {

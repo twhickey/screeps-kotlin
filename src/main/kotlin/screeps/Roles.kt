@@ -4,16 +4,13 @@ import screeps.api.*
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
 import screeps.api.structures.StructureStorage
+import screeps.creeps.*
 import screeps.creeps.behaviors.Mine
-import screeps.creeps.building
-import screeps.creeps.pause
-import screeps.creeps.role
 import screeps.creeps.roles.Role.DEFENSE_BUILDER
 import screeps.creeps.roles.Role.REPAIRER
-import screeps.creeps.upgrading
 
 fun Creep.mine(controller: StructureController) {
-    Mine.update(this)
+    this.memory.state = Mine.update(this)
     Mine.execute(this)
 }
 
@@ -209,6 +206,7 @@ private fun Creep.harvestClosestSource(includeStorage: Boolean) {
                     sayMessage("Failed to move to $closestStorage due to $result")
                 }
             }
+            return
         }
     }
 

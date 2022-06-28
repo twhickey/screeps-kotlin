@@ -4,9 +4,7 @@ import screeps.flags.handleFlags
 import screeps.api.*
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureSpawn
-import screeps.creeps.MinionType
-import screeps.creeps.minionType
-import screeps.creeps.role
+import screeps.creeps.*
 import screeps.creeps.roles.Role
 import screeps.utils.isEmpty
 import screeps.utils.unsafe.delete
@@ -27,12 +25,15 @@ fun gameLoop() {
     runTowers(Game.creeps.values, mainSpawn)
 
     for ((_, creep) in Game.creeps) {
+        val creepStateImpl = creep.memory.state.unsafeCast<CreepState>().impl
+        creep.memory.state = creepStateImpl.update(creep)
+        creepStateImpl.plan(creep)
+        creepStateImpl.update(creep)
+
         when (creep.memory.role) {
             Role.HARVESTER -> creep.harvest()
             Role.BUILDER -> creep.build()
             Role.UPGRADER -> creep.upgrade(mainSpawn.room.controller!!)
-            Role.GUARDIAN -> creep.guard(mainSpawn.room.controller!!)
-            Role.MINER -> creep.mine(mainSpawn.room.controller!!)
             Role.REPAIRER -> creep.repair()
             Role.DEFENSE_BUILDER -> creep.repair()
             else -> creep.pause()

@@ -20,7 +20,8 @@ enum class MinionType(val bodyPartPriorities: Map<BodyPartConstant, Int>, val va
         MOVE to 1
     ), listOf(Role.MINER)),
     GUARDIAN(mapOf(
-        ATTACK to 2,
+        TOUGH to 30,
+        RANGED_ATTACK to 4,
         MOVE to 1
     ), listOf(Role.GUARDIAN))
 }

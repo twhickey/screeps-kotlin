@@ -23,6 +23,8 @@ fun gameLoop() {
     //make sure we have at least some creeps
     spawnCreeps(Game.creeps.values, mainSpawn)
 
+    runTowers(Game.creeps.values, mainSpawn)
+
     for ((_, creep) in Game.creeps) {
         when (creep.memory.role) {
             Role.HARVESTER -> creep.harvest()
@@ -37,10 +39,49 @@ fun gameLoop() {
     }
 }
 
-private fun spawnCreeps(
-        creeps: Array<Creep>,
-        spawn: StructureSpawn
-) {
+private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
+    val attackers = spawn.room.find(FIND_HOSTILE_CREEPS)
+    if (attackers.isNotEmpty()) {
+        for (tower in Context.towers) {
+            val attackResult = tower.attack(attackers[0])
+            if (attackResult != OK) {
+                console.log("Tower $tower failed to attack ${attackers[0]} due to $attackResult")
+            }
+        }
+    } else {
+        val damagedCreeps = creeps
+            .filter { it.hits < it.hitsMax }
+            .map { Pair(it, (it.hitsMax - it.hits)) }
+            .sortedByDescending { it.second }
+            .map { it.first }
+
+        if (damagedCreeps.isNotEmpty()) {
+            for (tower in Context.towers) {
+                val healResult = tower.heal(damagedCreeps[0])
+                if (healResult != OK) {
+                    console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
+                }
+            }
+        } else {
+            val damagedStructures = spawn.room.find(FIND_STRUCTURES)
+                .filter { it.hits < it.hitsMax }
+                .map { Pair(it, (it.hitsMax - it.hits)) }
+                .sortedByDescending { it.second }
+                .map { it.first }
+
+            if (damagedStructures.isNotEmpty()) {
+                for (tower in Context.towers) {
+                    val repairResult = tower.repair(damagedStructures[0])
+                    if (repairResult != OK) {
+                        console.log("Tower $tower failed to repair structure ${damagedStructures[0]} due to $repairResult")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
     spawn.room.memory.debugMessages = false;
     if ((Game.time % 20) != 0) {
         return
@@ -54,16 +95,6 @@ private fun spawnCreeps(
 
     val minersSupported = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
 
-    val minionType: MinionType = when {
-        creeps.count() {it.memory.minionType == MinionType.GUARDIAN} < neededGuardians -> MinionType.GUARDIAN
-        creeps.count() {it.memory.minionType == MinionType.MINER } < minersSupported -> MinionType.MINER
-        creeps.count() {it.memory.minionType == MinionType.GENERIC } < 20 -> MinionType.GENERIC
-        //creeps.count() {it.memory.minionType == MinionType.HAULER} < 2 -> MinionType.HAULER
-        else -> MinionType.UNASSIGNED
-    }
-
-    val body = getCreepParts(minionType, spawn.room.energyAvailable)
-
     val neededRoles: Map<Role, Int> = mapOf(
         Role.BUILDER to max(0, 3 - creeps.count {it.memory.role == Role.BUILDER}),
         Role.HARVESTER to max(0, 3 - creeps.count {it.memory.role == Role.HARVESTER}),
@@ -74,35 +105,48 @@ private fun spawnCreeps(
         Role.DEFENSE_BUILDER to max(0, 3 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
     )
 
-    var role: Role = Role.HARVESTER
-    var maxNeeded = 0
-    for (vr in minionType.validRoles) {
-        if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
-            role = vr
-            maxNeeded = neededRoles[vr]!!
+    var neededTypes: MutableSet<MinionType> = HashSet()
+    for (mt in MinionType.values()) {
+        val supportedRoles = mt.validRoles
+        for (vr in supportedRoles) {
+            if (neededRoles.containsKey(vr) && neededRoles[vr] > 0) {
+                neededTypes.add(mt)
+            }
         }
     }
-    console.log("Spawn selections - minionType: $minionType; body: $body; neededRoles: $neededRoles; role: $role")
-    if (spawn.room.memory.debugMessages) {
-        console.log("Spawn selections - minionType: $minionType; body: $body; neededRoles: $neededRoles; role: $role")
+
+    var minionType: MinionType = MinionType.GENERIC
+    var role: Role = Role.HARVESTER
+    var maxNeeded = 0
+    var buildBody: Array<BodyPartConstant>? = null
+
+    for (mt in neededTypes) {
+        val body = getCreepParts(mt, spawn.room.energyAvailable)
+        if (body.isNotEmpty()) {
+            for (vr in mt.validRoles) {
+                if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
+                    role = vr
+                    maxNeeded = neededRoles[vr]!!
+                    minionType = mt
+                    buildBody = body
+                }
+            }
+        }
     }
 
-    val spawnCost = body.sumOf { BODYPART_COST[it]!! }
-    if (spawn.room.energyAvailable <  spawnCost) {
-        console.log("Not spawning type $minionType; role $role; body $body due to only having ${spawn.room.energyAvailable} of $spawnCost energy")
-        return
-    }
+    console.log("Spawn selections - minionType: $minionType; body: $buildBody; neededRoles: $neededRoles; role: $role")
 
-    if (!body.isEmpty()) {
+
+    if (buildBody != null && buildBody.isNotEmpty()) {
         val newName = "${role.name}_${Game.time}"
-        val code = spawn.spawnCreep(body, newName, options {
+        val code = spawn.spawnCreep(buildBody, newName, options {
             memory = jsObject<CreepMemory> { this.role = role; this.minionType = minionType }
         })
 
         when (code) {
-            OK -> console.log("Spawned $newName; type $minionType; role $role; body $body")
+            OK -> console.log("Spawned $newName; type $minionType; role $role; body $buildBody")
             ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
-            else -> console.log("unhandled error code $code for body $body and name $newName")
+            else -> console.log("unhandled error code $code for body $buildBody and name $newName")
         }
     }
 }

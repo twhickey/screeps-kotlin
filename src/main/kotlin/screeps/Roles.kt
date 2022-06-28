@@ -19,11 +19,10 @@ fun Creep.mine(controller: StructureController) {
 fun Creep.guard(controller: StructureController) {
     val targets = controller.room.find(FIND_HOSTILE_CREEPS).filter { it.hits > 0 }
     if (targets.isNotEmpty()) {
-        val result = attack(targets[0])
-        sayMessage("Attacking ${targets[0]} with result $result")
+        val result = rangedAttack(targets[0])
         when (result) {
             ERR_NOT_IN_RANGE -> moveTo(targets[0].pos)
-            else -> Unit
+            else -> sayMessage("Attacking ${targets[0]} with result $result")
         }
     } else {
         moveTo(Game.spawns.values.firstOrNull()!!)
@@ -147,7 +146,7 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
 
     if (memory.building) {
         val targets = toRoom.find(FIND_MY_STRUCTURES)
-            .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
+            .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN || it.structureType == STRUCTURE_STORAGE) }
             .map { it.unsafeCast<StoreOwner>() }
             .filter { it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY) }
 
@@ -175,6 +174,25 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
 }
 
 private fun Creep.harvestClosestSource() {
+    val storages = Context.myStuctures
+        .map { it.value }
+        .filter { it.structureType == STRUCTURE_STORAGE  }
+        .map { unsafeCast<StructureContainer>() }
+        .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > this.store.getCapacity(RESOURCE_ENERGY) }
+        .toTypedArray()
+
+    if (storages.isNotEmpty()) {
+        val closestStorage = this.pos.findClosestByPath(storages)
+        if (closestStorage != null) {
+            val result = this.withdraw(closestStorage, RESOURCE_ENERGY)
+            if (result == ERR_NOT_IN_RANGE) {
+                moveTo(closestStorage)
+            } else if (result != OK) {
+                sayMessage("Failed to move to $closestStorage due to $result")
+            }
+        }
+    }
+
     val resourcesOnGround = this.room.find(FIND_DROPPED_RESOURCES)
         .filter { it.resourceType == RESOURCE_ENERGY }
         .toTypedArray()

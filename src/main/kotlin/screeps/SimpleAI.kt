@@ -70,18 +70,19 @@ private fun spawnCreeps(
         Role.UPGRADER to max(0, 2 - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),
-        Role.REPAIRER to max(0, 3 - creeps.count() {it.memory.role == Role.REPAIRER}),
+        Role.REPAIRER to max(0, 2 - creeps.count() {it.memory.role == Role.REPAIRER}),
         Role.DEFENSE_BUILDER to max(0, 3 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
     )
 
     var role: Role = Role.HARVESTER
+    var maxNeeded = 0
     for (vr in minionType.validRoles) {
-        if (neededRoles.getOrElse(vr) {0} > 0) {
+        if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
             role = vr
-            break
+            maxNeeded = neededRoles[vr]!!
         }
     }
-
+    console.log("Spawn selections - minionType: $minionType; body: $body; neededRoles: $neededRoles; role: $role")
     if (spawn.room.memory.debugMessages) {
         console.log("Spawn selections - minionType: $minionType; body: $body; neededRoles: $neededRoles; role: $role")
     }

@@ -193,10 +193,6 @@ private fun Creep.harvestClosestSource() {
             .filter { it.store.getUsedCapacity() > 50}
             .toTypedArray()
 
-        if(containers.isNotEmpty()) {
-            sayMessage("Containers for harvesting: $containers")
-        }
-
         if (containers.isNotEmpty()) {
             val closestContainer = this.pos.findClosestByRange(containers).unsafeCast<StructureContainer>()
             if (closestContainer != null) {

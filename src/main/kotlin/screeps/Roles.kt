@@ -1,7 +1,6 @@
 package screeps
 
 import screeps.api.*
-import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
 import screeps.api.structures.StructureStorage

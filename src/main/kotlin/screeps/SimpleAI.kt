@@ -59,7 +59,7 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
                 if (healResult != OK) {
                     console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
                 }
-            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 10000){
+            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 900){
                 val damagedStructures = spawn.room.find(FIND_STRUCTURES)
                     .filter { it.hits < it.hitsMax }
                     .map { Pair(it, (it.hitsMax - it.hits)) }

@@ -135,10 +135,10 @@ fun Creep.repair(assignedRoom: Room = this.room) {
 }
 
 val DELIVERY_PRIORITIES: Map<StructureConstant, Int> = mapOf(
-    STRUCTURE_TOWER to 10,
-    STRUCTURE_EXTENSION to 8,
-    STRUCTURE_SPAWN to 6,
-    STRUCTURE_STORAGE to 1
+    STRUCTURE_TOWER to 1,
+    STRUCTURE_EXTENSION to 3,
+    STRUCTURE_SPAWN to 5,
+    STRUCTURE_STORAGE to 10
 )
 
 private fun toStructurePriority(structureType: StructureConstant) :Int {
@@ -158,15 +158,10 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
     if (memory.building) {
         val targets = toRoom.find(FIND_MY_STRUCTURES)
             .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN || it.structureType == STRUCTURE_STORAGE) }
-            .map { Pair(it, toStructurePriority(it.structureType)) }
-            .sortedByDescending { it.second }
-            .map { it.first }
-            .map { Pair(it, this.pos.getRangeTo(it))}
-            .sortedBy { it.second }
-            .map {it.first }
-            .map { it.unsafeCast<StoreOwner>() }
-            .filter { (it != null) && (it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY)) }
-
+            .map { Triple(it, toStructurePriority(it.structureType), this.pos.getRangeTo(it)) }
+            .sortedWith(compareBy({it.second}, {it.third}))
+            .map { it.first.unsafeCast<StoreOwner>() }
+            .filter { it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY) }
 
         if (targets.isNotEmpty()) {
             val result = transfer(targets[0], RESOURCE_ENERGY)

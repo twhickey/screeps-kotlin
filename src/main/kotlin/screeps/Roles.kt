@@ -1,8 +1,10 @@
 package screeps
 
 import screeps.api.*
+import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
+import screeps.api.structures.StructureStorage
 import screeps.creeps.behaviors.Mine
 import screeps.creeps.building
 import screeps.creeps.pause
@@ -133,6 +135,16 @@ fun Creep.repair(assignedRoom: Room = this.room) {
     }
 }
 
+val DELIVERY_PRIORITIES: Map<StructureConstant, Int> = mapOf(
+    STRUCTURE_TOWER to 10,
+    STRUCTURE_EXTENSION to 8,
+    STRUCTURE_SPAWN to 6,
+    STRUCTURE_STORAGE to 1
+)
+
+private fun toStructurePriority(structureType: StructureConstant) :Int {
+    return DELIVERY_PRIORITIES.getOrElse(structureType) { 37 }
+}
 fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
 
     if (memory.building && store[RESOURCE_ENERGY] == 0) {
@@ -147,14 +159,20 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
     if (memory.building) {
         val targets = toRoom.find(FIND_MY_STRUCTURES)
             .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN || it.structureType == STRUCTURE_STORAGE) }
+            .map { Pair(it, toStructurePriority(it.structureType)) }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .map { Pair(it, this.pos.getRangeTo(it))}
+            .sortedBy { it.second }
+            .map {it.first }
             .map { it.unsafeCast<StoreOwner>() }
-            .filter { it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY) }
+            .filter { (it != null) && (it.store[RESOURCE_ENERGY] < it.store.getCapacity(RESOURCE_ENERGY)) }
+
 
         if (targets.isNotEmpty()) {
             val result = transfer(targets[0], RESOURCE_ENERGY)
             if (result == ERR_NOT_IN_RANGE) {
-                val moveResult = moveTo(targets[0].pos)
-                when (moveResult)
+                when (moveTo(targets[0].pos))
                 {
                     ERR_TIRED -> pause()
                 }
@@ -174,16 +192,21 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
 }
 
 private fun Creep.harvestClosestSource() {
+
+    var harvested = false
+
     val storages = Context.myStuctures
         .map { it.value }
-        .filter { it.structureType == STRUCTURE_STORAGE  }
-        .map { unsafeCast<StructureContainer>() }
-        .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > this.store.getCapacity(RESOURCE_ENERGY) }
+        .filter { it.structureType == STRUCTURE_STORAGE }
+        .map {it.unsafeCast<StructureStorage>() }
+        .filter { it != null}
+        .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > (this.store.getCapacity() ?: 100) }
         .toTypedArray()
 
     if (storages.isNotEmpty()) {
         val closestStorage = this.pos.findClosestByPath(storages)
         if (closestStorage != null) {
+            harvested = true
             val result = this.withdraw(closestStorage, RESOURCE_ENERGY)
             if (result == ERR_NOT_IN_RANGE) {
                 moveTo(closestStorage)
@@ -193,18 +216,23 @@ private fun Creep.harvestClosestSource() {
         }
     }
 
-    val resourcesOnGround = this.room.find(FIND_DROPPED_RESOURCES)
-        .filter { it.resourceType == RESOURCE_ENERGY }
-        .toTypedArray()
+    if (!harvested) {
+        val resourcesOnGround = this.room.find(FIND_DROPPED_RESOURCES)
+            .filter { it.resourceType == RESOURCE_ENERGY }
+            .toTypedArray()
 
-    if (resourcesOnGround.isNotEmpty()) {
-        val closestResource = this.pos.findClosestByPath(resourcesOnGround)
-        if (closestResource != null) {
-            if (pickup(closestResource) == ERR_NOT_IN_RANGE) {
-                moveTo(closestResource)
+        if (resourcesOnGround.isNotEmpty()) {
+            val closestResource = this.pos.findClosestByPath(resourcesOnGround)
+            if (closestResource != null) {
+                harvested = true
+                if (pickup(closestResource) == ERR_NOT_IN_RANGE) {
+                    moveTo(closestResource)
+                }
             }
         }
-    } else {
+    }
+
+    if (!harvested) {
         val containers = this.room.find(FIND_STRUCTURES)
             .filter { it.structureType == STRUCTURE_CONTAINER }
             .map { it.unsafeCast<StructureContainer>()}
@@ -214,16 +242,19 @@ private fun Creep.harvestClosestSource() {
         if (containers.isNotEmpty()) {
             val closestContainer = this.pos.findClosestByRange(containers).unsafeCast<StructureContainer>()
             if (closestContainer != null) {
+                harvested = true
                 if (withdraw(closestContainer, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                     moveTo(closestContainer)
                 }
             }
-        } else {
-            val closestActiveSource = this.pos.findClosestByRange(FIND_SOURCES_ACTIVE)
-            if (closestActiveSource != null) {
-                if (harvest(closestActiveSource) == ERR_NOT_IN_RANGE) {
-                    moveTo(closestActiveSource.pos)
-                }
+        }
+    }
+
+    if (!harvested) {
+        val closestActiveSource = this.pos.findClosestByRange(FIND_SOURCES_ACTIVE)
+        if (closestActiveSource != null) {
+            if (harvest(closestActiveSource) == ERR_NOT_IN_RANGE) {
+                moveTo(closestActiveSource.pos)
             }
         }
     }

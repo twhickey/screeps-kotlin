@@ -2,20 +2,48 @@ package screeps
 
 import screeps.api.*
 import screeps.api.structures.StructureSpawn
+import screeps.creeps.BodyPartSpec
 import screeps.creeps.MinionType
+import kotlin.math.floor
+import kotlin.math.min
 
 fun getCreepParts(type: MinionType, availableEnergy: Int): Array<BodyPartConstant> {
-    val baseCost = calculateCost(type.bodyPartPriorities)
-    val reps = availableEnergy / baseCost
-    if (reps > 0) {
-        val bodyPartCounts = type.bodyPartPriorities.map { (bp, c) -> Pair(bp, c * reps) }.toMap()
-        return bodyPartCounts.map { (bp, c) -> Array(c) {bp}}.toTypedArray().flatten().toTypedArray()
+    var level = 1
+    var cost = 0
+    var prevLevel = 0
+    var prevCost = 0
+    while (cost < availableEnergy) {
+        prevLevel = level
+        prevCost = cost
+        cost = calculateCost(type.bodyPartPriorities, level)
+        // console.log("MinionTyhpe: $type, Level: $level, Cost: $cost, Available Energy: $availableEnergy")
+        if (cost == prevCost) { break }
+        level++
     }
-    return emptyArray()
+
+    level = prevLevel - 1
+    return if (level > 0) {
+        val bodyPartCounts = type.bodyPartPriorities
+            .map { Pair(it.key, calculateCount(level, it.value)) }
+            .toMap()
+        val result = bodyPartCounts.map { (bp, c) -> Array(c) {bp}}.toTypedArray().flatten().toTypedArray()
+        // console.log("Returning MinionType: $type, Level: $level, body: $result")
+        result
+    } else {
+        emptyArray()
+    }
 }
 
-fun calculateCost(bodyPartPriorities: Map<BodyPartConstant, Int>): Int {
-    return bodyPartPriorities.map { (bp, c) -> c * BODYPART_COST[bp]!! }.sum()
+fun calculateCost(bodyPartPriorities: Map<BodyPartConstant, BodyPartSpec>, level: Int): Int {
+    val bodyPartCounts = bodyPartPriorities
+        .map { Pair(it.key, calculateCount(level, it.value)) }
+        .toMap()
+    val cost = bodyPartCounts.map { (bp, c) -> c * BODYPART_COST[bp]!! }.sum()
+    return cost
+}
+
+fun calculateCount(level: Int, spec: BodyPartSpec): Int {
+    return min(spec.max, floor(spec.min + (level - 1) * spec.factor).toInt())
 }
 
 fun createConstructionSite(mainSpawn: StructureSpawn, pos: RoomPosition, type: StructureConstant): Boolean {

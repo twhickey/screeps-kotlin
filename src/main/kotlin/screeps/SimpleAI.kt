@@ -59,7 +59,7 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
                 if (healResult != OK) {
                     console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
                 }
-            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 500){
+            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 10000){
                 val damagedStructures = spawn.room.find(FIND_STRUCTURES)
                     .filter { it.hits < it.hitsMax }
                     .map { Pair(it, (it.hitsMax - it.hits)) }
@@ -87,14 +87,22 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     val minersSupported = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
 
+    val cSites = spawn.room.find(FIND_CONSTRUCTION_SITES).count()
+    val supportedBuilders = when(cSites) {
+        0 -> 0
+        in (1..4) -> 1
+        else -> (cSites / 5) + 1
+    }
+
+
     val neededRoles: Map<Role, Int> = mapOf(
-        Role.BUILDER to max(0, 3 - creeps.count {it.memory.role == Role.BUILDER}),
-        Role.HARVESTER to max(0, 5 - creeps.count {it.memory.role == Role.HARVESTER}),
-        Role.UPGRADER to max(0, 2 - creeps.count {it.memory.role == Role.UPGRADER}),
+        Role.BUILDER to max(0, supportedBuilders - creeps.count {it.memory.role == Role.BUILDER}),
+        Role.HARVESTER to max(0, 4 - creeps.count {it.memory.role == Role.HARVESTER}),
+        Role.UPGRADER to max(0, 1 - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),
-        Role.REPAIRER to max(0, 3 - creeps.count() {it.memory.role == Role.REPAIRER}),
-        Role.DEFENSE_BUILDER to max(0, 3 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
+        Role.REPAIRER to max(0, 2 - creeps.count() {it.memory.role == Role.REPAIRER}),
+        Role.DEFENSE_BUILDER to max(0, 2 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
     )
 
     var neededTypes: MutableSet<MinionType> = HashSet()
@@ -114,14 +122,14 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     for (mt in neededTypes) {
         val body = getCreepParts(mt, spawn.room.energyAvailable)
-        if (body.isNotEmpty()) {
-            for (vr in mt.validRoles) {
-                if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
-                    role = vr
-                    maxNeeded = neededRoles[vr]!!
-                    minionType = mt
-                    buildBody = body
-                }
+        if (body == null || body.isEmpty()) continue
+        for (vr in mt.validRoles) {
+            if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
+                role = vr
+                maxNeeded = neededRoles[vr]!!
+                minionType = mt
+                buildBody = body
+                break;
             }
         }
     }
@@ -136,7 +144,7 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         })
 
         when (code) {
-            OK -> console.log("Spawned $newName; type $minionType; role $role; body $buildBody")
+            OK -> console.log("Spawned $newName; type $minionType; role $role; body ${buildBody.toList()}")
             ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
             else -> console.log("unhandled error code $code for body $buildBody and name $newName")
         }

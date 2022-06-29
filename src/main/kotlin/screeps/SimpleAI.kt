@@ -40,37 +40,33 @@ fun gameLoop() {
 }
 
 private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
-    val attackers = spawn.room.find(FIND_HOSTILE_CREEPS)
-    if (attackers.isNotEmpty()) {
-        for (tower in Context.towers) {
-            val attackResult = tower.attack(attackers[0])
+    for (tower in Context.towers) {
+        val attackers = spawn.room.find(FIND_HOSTILE_CREEPS)
+        if (attackers.isNotEmpty()) {
+                val attackResult = tower.attack(attackers[0])
             if (attackResult != OK) {
                 console.log("Tower $tower failed to attack ${attackers[0]} due to $attackResult")
             }
-        }
-    } else {
-        val damagedCreeps = creeps
-            .filter { it.hits < it.hitsMax }
-            .map { Pair(it, (it.hitsMax - it.hits)) }
-            .sortedByDescending { it.second }
-            .map { it.first }
-
-        if (damagedCreeps.isNotEmpty()) {
-            for (tower in Context.towers) {
-                val healResult = tower.heal(damagedCreeps[0])
-                if (healResult != OK) {
-                    console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
-                }
-            }
-        } else {
-            val damagedStructures = spawn.room.find(FIND_STRUCTURES)
+        } else if(tower.store.getUsedCapacity(RESOURCE_ENERGY) > 200) {
+            val damagedCreeps = creeps
                 .filter { it.hits < it.hitsMax }
                 .map { Pair(it, (it.hitsMax - it.hits)) }
                 .sortedByDescending { it.second }
                 .map { it.first }
 
-            if (damagedStructures.isNotEmpty()) {
-                for (tower in Context.towers) {
+            if (damagedCreeps.isNotEmpty()) {
+                val healResult = tower.heal(damagedCreeps[0])
+                if (healResult != OK) {
+                    console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
+                }
+            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 500){
+                val damagedStructures = spawn.room.find(FIND_STRUCTURES)
+                    .filter { it.hits < it.hitsMax }
+                    .map { Pair(it, (it.hitsMax - it.hits)) }
+                    .sortedByDescending { it.second }
+                    .map { it.first }
+
+                if (damagedStructures.isNotEmpty()) {
                     val repairResult = tower.repair(damagedStructures[0])
                     if (repairResult != OK) {
                         console.log("Tower $tower failed to repair structure ${damagedStructures[0]} due to $repairResult")
@@ -87,21 +83,17 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         return
     }
 
-    val neededGuardians = if (spawn.room.find(FIND_HOSTILE_CREEPS).isNotEmpty()) {
-        2
-    } else {
-        0
-    }
+    val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
 
     val minersSupported = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
 
     val neededRoles: Map<Role, Int> = mapOf(
         Role.BUILDER to max(0, 3 - creeps.count {it.memory.role == Role.BUILDER}),
-        Role.HARVESTER to max(0, 3 - creeps.count {it.memory.role == Role.HARVESTER}),
+        Role.HARVESTER to max(0, 5 - creeps.count {it.memory.role == Role.HARVESTER}),
         Role.UPGRADER to max(0, 2 - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),
-        Role.REPAIRER to max(0, 2 - creeps.count() {it.memory.role == Role.REPAIRER}),
+        Role.REPAIRER to max(0, 3 - creeps.count() {it.memory.role == Role.REPAIRER}),
         Role.DEFENSE_BUILDER to max(0, 3 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
     )
 

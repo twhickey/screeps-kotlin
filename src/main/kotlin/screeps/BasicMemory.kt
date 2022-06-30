@@ -26,6 +26,8 @@ var FlagMemory.test : Int by memory { 0 }
 /* room.memory */
 var RoomMemory.numberOfCreeps : Int by memory { 0 }
 var RoomMemory.debugMessages : Boolean by memory { false }
+var RoomMemory.towerBuildThreshold: Int by memory { 1100 }
+var RoomMemory.towerRepairThreshold: Int by memory { 200 }
 
 /* spawn.memory */
 var SpawnMemory.test : Int by memory { 0 }

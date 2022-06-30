@@ -47,7 +47,7 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
             if (attackResult != OK) {
                 console.log("Tower $tower failed to attack ${attackers[0]} due to $attackResult")
             }
-        } else if(tower.store.getUsedCapacity(RESOURCE_ENERGY) > 200) {
+        } else if(tower.store.getUsedCapacity(RESOURCE_ENERGY) > spawn.room.memory.towerRepairThreshold) {
             val damagedCreeps = creeps
                 .filter { it.hits < it.hitsMax }
                 .map { Pair(it, (it.hitsMax - it.hits)) }
@@ -59,7 +59,7 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
                 if (healResult != OK) {
                     console.log("Tower $tower failed to heal creep ${damagedCreeps[0]} due to $healResult")
                 }
-            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > 900){
+            } else if (tower.store.getUsedCapacity(RESOURCE_ENERGY) > spawn.room.memory.towerBuildThreshold){
                 val damagedStructures = spawn.room.find(FIND_STRUCTURES)
                     .filter { it.hits < it.hitsMax }
                     .map { Pair(it, (it.hitsMax - it.hits)) }
@@ -97,7 +97,7 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     val neededRoles: Map<Role, Int> = mapOf(
         Role.BUILDER to max(0, supportedBuilders - creeps.count {it.memory.role == Role.BUILDER}),
-        Role.HARVESTER to max(0, 4 - creeps.count {it.memory.role == Role.HARVESTER}),
+        Role.HARVESTER to max(0, 3 - creeps.count {it.memory.role == Role.HARVESTER}),
         Role.UPGRADER to max(0, 1 - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),

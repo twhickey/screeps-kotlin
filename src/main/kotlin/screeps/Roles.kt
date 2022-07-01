@@ -5,6 +5,7 @@ import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureController
 import screeps.api.structures.StructureStorage
 import screeps.creeps.*
+import screeps.creeps.behaviors.DELIVERY_PRIORITIES
 import screeps.creeps.behaviors.Mine
 import screeps.creeps.roles.Role.DEFENSE_BUILDER
 import screeps.creeps.roles.Role.REPAIRER
@@ -130,13 +131,6 @@ fun Creep.repair(assignedRoom: Room = this.room) {
         harvestClosestSource(true)
     }
 }
-
-val DELIVERY_PRIORITIES: Map<StructureConstant, Int> = mapOf(
-    STRUCTURE_TOWER to 1,
-    STRUCTURE_EXTENSION to 3,
-    STRUCTURE_SPAWN to 5,
-    STRUCTURE_STORAGE to 10
-)
 
 private fun toStructurePriority(structureType: StructureConstant) :Int {
     return DELIVERY_PRIORITIES.getOrElse(structureType) { 37 }

@@ -13,5 +13,11 @@ enum class CreepState(val impl: Behavior) {
     UPGRADING(Upgrade),
     REPAIR(Repair),
     REPAIR_WALLS(RepairWalls),
-    GUARDING(Guard)
+    GUARDING(Guard);
+
+    companion object {
+        fun getState(fromMemory: Enum<CreepState>): CreepState {
+            return values().first { it == fromMemory }
+        }
+    }
 }

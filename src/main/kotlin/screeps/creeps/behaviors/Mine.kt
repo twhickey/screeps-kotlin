@@ -25,17 +25,17 @@ object Mine: Behavior() {
         val closestContainer = creep.pos.findClosestByPath(containers)
         if (closestContainer != null) {
             creep.memory.targetId = closestContainer.id
-            creep.memory.targetType = STRUCTURE_CONTAINER
+            creep.memory.targetStructureType = STRUCTURE_CONTAINER
         } else {
             creep.memory.targetId = null
-            creep.memory.targetType = STRUCTURE_CONTAINER
+            creep.memory.targetStructureType = STRUCTURE_CONTAINER
         }
     }
 
     override fun execute(creep: Creep) {
         if (creep.memory.targetId == null) return
-        if (creep.memory.targetType != STRUCTURE_CONTAINER) {
-            creep.sayMessage("Attempting to mine with Target Type not structure: ${creep.memory.targetType}")
+        if (creep.memory.targetStructureType != STRUCTURE_CONTAINER) {
+            creep.sayMessage("Attempting to mine with Target Type not structure: ${creep.memory.targetStructureType}")
             return
         }
         val targetContainer = Game.getObjectById<StructureContainer>(creep.memory.targetId)

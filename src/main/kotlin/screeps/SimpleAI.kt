@@ -101,14 +101,16 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         .filter {it.memory.role == Role.HARVESTER }
         .sumOf { it.store.getCapacity() ?: 0}
 
+    val neededHarvester = if (availableCarry < availableEnergy) { 1 } else { 0 }
+
+    console.log("Available Energy: $availableEnergy; Available Carry: $availableCarry")
+
     val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
         in (0 .. 10000) -> 4
         in (10000 .. 20000) -> 3
         in (20000 .. 30000) -> 2
         else -> 0
     }
-
-    val neededHarvester = if (availableCarry < availableEnergy) { 1 } else { 0 }
 
     val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
 
@@ -160,6 +162,11 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         }
     }
 
+    val creepsByRole = creeps
+        .groupBy { it.memory.role }
+        .map { Pair(it.key, it.value.count()) }
+
+    console.log("CreepsByRole: $creepsByRole")
     console.log("Spawn selections - minionType: $minionType; body: $buildBody; neededRoles: $neededRoles; role: $role")
 
 

@@ -2,6 +2,7 @@ package screeps
 
 import screeps.flags.handleFlags
 import screeps.api.*
+import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureSpawn
 import screeps.creeps.MinionType
 import screeps.creeps.minionType
@@ -82,6 +83,23 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
     if ((Game.time % 20) != 0) {
         return
     }
+    val availableEnergyFromContainerss = Context.myStuctures
+        .map { it.value }
+        .filter { it.structureType == STRUCTURE_CONTAINER }
+        .map { it.unsafeCast<StructureContainer>()}
+        .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
+
+    val availableEnergyFromResources = spawn.room.find(FIND_DROPPED_RESOURCES)
+        .filter { it.resourceType == RESOURCE_ENERGY }
+        .sumOf {it.amount }
+
+    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainerss
+
+    val availableCarry = creeps
+        .filter {it.memory.role == Role.HARVESTER }
+        .sumOf { it.store.getCapacity() ?: 0}
+
+    val neededHarvester = if (availableCarry < availableEnergy) { 1 } else { 0 }
 
     val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
 
@@ -97,7 +115,7 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     val neededRoles: Map<Role, Int> = mapOf(
         Role.BUILDER to max(0, supportedBuilders - creeps.count {it.memory.role == Role.BUILDER}),
-        Role.HARVESTER to max(0, 3 - creeps.count {it.memory.role == Role.HARVESTER}),
+        Role.HARVESTER to neededHarvester,
         Role.UPGRADER to max(0, 1 - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),

@@ -46,7 +46,7 @@ fun Creep.upgrade(controller: StructureController) {
             moveTo(controller.pos)
         }
     } else {
-        harvestClosestSource()
+        harvestClosestSource(true)
     }
 }
 
@@ -91,7 +91,7 @@ fun Creep.build(assignedRoom: Room = this.room) {
             }
         }
     } else {
-        harvestClosestSource()
+        harvestClosestSource(true)
     }
 }
 
@@ -130,7 +130,7 @@ fun Creep.repair(assignedRoom: Room = this.room) {
             }
         }
     } else {
-        harvestClosestSource()
+        harvestClosestSource(true)
     }
 }
 
@@ -181,31 +181,33 @@ fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
             }
         }
     } else {
-        harvestClosestSource()
+        harvestClosestSource(false)
     }
 }
 
-private fun Creep.harvestClosestSource() {
+private fun Creep.harvestClosestSource(includeStorage: Boolean) {
 
     var harvested = false
 
-    val storages = Context.myStuctures
-        .map { it.value }
-        .filter { it.structureType == STRUCTURE_STORAGE }
-        .map {it.unsafeCast<StructureStorage>() }
-        .filter { it != null}
-        .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > (this.store.getCapacity() ?: 100) }
-        .toTypedArray()
+    if (includeStorage) {
+        val storages = Context.myStuctures
+            .map { it.value }
+            .filter { it.structureType == STRUCTURE_STORAGE }
+            .map {it.unsafeCast<StructureStorage>() }
+            .filter { it != null}
+            .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > (this.store.getCapacity() ?: 100) }
+            .toTypedArray()
 
-    if (storages.isNotEmpty()) {
-        val closestStorage = this.pos.findClosestByPath(storages)
-        if (closestStorage != null) {
-            harvested = true
-            val result = this.withdraw(closestStorage, RESOURCE_ENERGY)
-            if (result == ERR_NOT_IN_RANGE) {
-                moveTo(closestStorage)
-            } else if (result != OK) {
-                sayMessage("Failed to move to $closestStorage due to $result")
+        if (storages.isNotEmpty()) {
+            val closestStorage = this.pos.findClosestByPath(storages)
+            if (closestStorage != null) {
+                harvested = true
+                val result = this.withdraw(closestStorage, RESOURCE_ENERGY)
+                if (result == ERR_NOT_IN_RANGE) {
+                    moveTo(closestStorage)
+                } else if (result != OK) {
+                    sayMessage("Failed to move to $closestStorage due to $result")
+                }
             }
         }
     }

@@ -79,10 +79,12 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
 }
 
 private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
+
     spawn.room.memory.debugMessages = false;
     if ((Game.time % 20) != 0) {
         return
     }
+
     val availableEnergyFromContainerss = Context.myStuctures
         .map { it.value }
         .filter { it.structureType == STRUCTURE_CONTAINER }
@@ -99,6 +101,13 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         .filter {it.memory.role == Role.HARVESTER }
         .sumOf { it.store.getCapacity() ?: 0}
 
+    val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
+        in (0 .. 10000) -> 4
+        in (10000 .. 20000) -> 3
+        in (20000 .. 30000) -> 2
+        else -> 0
+    }
+
     val neededHarvester = if (availableCarry < availableEnergy) { 1 } else { 0 }
 
     val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
@@ -112,11 +121,10 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         else -> (cSites / 5) + 1
     }
 
-
     val neededRoles: Map<Role, Int> = mapOf(
         Role.BUILDER to max(0, supportedBuilders - creeps.count {it.memory.role == Role.BUILDER}),
         Role.HARVESTER to neededHarvester,
-        Role.UPGRADER to max(0, 1 - creeps.count {it.memory.role == Role.UPGRADER}),
+        Role.UPGRADER to max(0, neededUpgraders - creeps.count {it.memory.role == Role.UPGRADER}),
         Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
         Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),
         Role.REPAIRER to max(0, 2 - creeps.count() {it.memory.role == Role.REPAIRER}),

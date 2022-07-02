@@ -78,6 +78,8 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
     }
 }
 
+val MAX_HARVESTERS = 15
+
 private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     spawn.room.memory.debugMessages = false;
@@ -85,8 +87,7 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         return
     }
 
-    val availableEnergyFromContainerss = Context.myStuctures
-        .map { it.value }
+    val availableEnergyFromContainers = spawn.room.find(FIND_STRUCTURES)
         .filter { it.structureType == STRUCTURE_CONTAINER }
         .map { it.unsafeCast<StructureContainer>()}
         .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
@@ -95,15 +96,16 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
         .filter { it.resourceType == RESOURCE_ENERGY }
         .sumOf {it.amount }
 
-    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainerss
+    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainers
 
     val availableCarry = creeps
         .filter {it.memory.role == Role.HARVESTER }
         .sumOf { it.store.getCapacity() ?: 0}
 
-    val neededHarvester = if (availableCarry < availableEnergy) { 1 } else { 0 }
+    val neededHarvester = if ((availableCarry < availableEnergy) && (creeps.count {it.memory.role == Role.HARVESTER} < MAX_HARVESTERS))
+        { 1 } else { 0 }
 
-    console.log("Available Energy: $availableEnergy; Available Carry: $availableCarry")
+    console.log("Available Energy: $availableEnergy (Container $availableEnergyFromContainers + Resource $availableEnergyFromResources); Available Carry: $availableCarry")
 
     val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
         in (0 .. 10000) -> 4

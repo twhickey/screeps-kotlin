@@ -5,11 +5,10 @@ import screeps.api.*
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureSpawn
 import screeps.creeps.*
-import screeps.creeps.roles.Role
 import screeps.utils.isEmpty
 import screeps.utils.unsafe.delete
 import screeps.utils.unsafe.jsObject
-import kotlin.math.max
+import kotlin.math.min
 
 fun gameLoop() {
     val mainSpawn: StructureSpawn = Game.spawns.values.firstOrNull() ?: return
@@ -19,26 +18,97 @@ fun gameLoop() {
 
     handleFlags(mainSpawn)
 
-    //make sure we have at least some creeps
-    spawnCreeps(Game.creeps.values, mainSpawn)
-
     runTowers(Game.creeps.values, mainSpawn)
+
+    val neededStates = planCreeps(Game.creeps.values, mainSpawn)
+
+    //make sure we have at least some creeps
+    spawnCreeps(Game.creeps.values, mainSpawn, neededStates)
 
     for ((_, creep) in Game.creeps) {
         val creepStateImpl = creep.memory.state.unsafeCast<CreepState>().impl
-        creep.memory.state = creepStateImpl.update(creep)
+        val nextState = creepStateImpl.update(creep)
+        creep.memory.state = nextState
         creepStateImpl.plan(creep)
-        creepStateImpl.update(creep)
-
-        when (creep.memory.role) {
-            Role.HARVESTER -> creep.harvest()
-            Role.BUILDER -> creep.build()
-            Role.UPGRADER -> creep.upgrade(mainSpawn.room.controller!!)
-            Role.REPAIRER -> creep.repair()
-            Role.DEFENSE_BUILDER -> creep.repair()
-            else -> creep.pause()
-        }
+        creepStateImpl.execute(creep)
     }
+}
+
+private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<CreepState, Int> {
+
+    creeps.filter { it.memory.state == CreepState.UNKNOWN || it.memory.state == CreepState.BUSY }
+        .forEach { it.memory.state = CreepState.IDLE }
+
+    val availableCreeps = creeps.filter { it.memory.state == CreepState.IDLE }
+    if (Game.time % 20 == 0) console.log("Idle Creeps: ${availableCreeps.count()}")
+
+    val availableEnergyFromContainers = spawn.room.find(FIND_STRUCTURES)
+        .filter { it.structureType == STRUCTURE_CONTAINER }
+        .map { it.unsafeCast<StructureContainer>()}
+        .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
+
+    val availableEnergyFromResources = spawn.room.find(FIND_DROPPED_RESOURCES)
+        .filter { it.resourceType == RESOURCE_ENERGY }
+        .sumOf {it.amount }
+
+    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainers
+
+    val currentCarry = creeps
+        .filter {it.memory.state == CreepState.GETTING_ENERGY }
+        .sumOf { it.store.getCapacity() ?: 0}
+
+    val neededHarvesters = when (val energy = availableEnergy - currentCarry) {
+        in (Int.MIN_VALUE .. 100) -> 0
+        in (100 .. 1000) -> 1
+        in (1000 .. 2000) -> 2
+        in (2000 .. 5000) -> 4
+        else -> min(15, (energy / 1200))
+    }
+
+    val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
+        in (0 .. 10000) -> 4
+        in (10000 .. 20000) -> 3
+        in (20000 .. 30000) -> 2
+        else -> 0
+    }
+
+    val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
+
+    val minersSupported = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
+
+    val cSites = spawn.room.find(FIND_CONSTRUCTION_SITES).count()
+    val supportedBuilders = when(cSites) {
+        0 -> 0
+        in (1..4) -> 1
+        else -> (cSites / 5) + 1
+    }
+
+    val neededStates: MutableMap<CreepState, Int> = mutableMapOf(
+        CreepState.BUILDING to supportedBuilders,
+        CreepState.TRANSFERRING_ENERGY to neededHarvesters,
+        CreepState.UPGRADING to neededUpgraders,
+        CreepState.GUARDING to neededGuardians,
+        CreepState.MINE to minersSupported,
+        CreepState.REPAIR to 2,
+        CreepState.REPAIR_WALLS to 2
+    )
+
+    for (ac in availableCreeps) {
+        val validStates = ac.memory.minionType.unsafeCast<MinionType>().validStates
+        val newState = neededStates.entries
+            .filter { it.value > 0 }
+            .sortedByDescending { it.value }
+            .map { it.key }
+            .firstOrNull { validStates.contains(it)} ?: CreepState.TRANSFERRING_ENERGY
+        if (newState.requiresGetEnergy) {
+            ac.memory.state = CreepState.GETTING_ENERGY
+            ac.memory.nextState = newState
+        } else {
+            ac.memory.state = newState
+        }
+        neededStates[newState] = neededStates[newState]!! - 1
+    }
+    return neededStates
 }
 
 private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
@@ -79,112 +149,45 @@ private fun runTowers(creeps: Array<Creep>, spawn: StructureSpawn) {
     }
 }
 
-val MAX_HARVESTERS = 15
+private fun spawnCreep(spawn: StructureSpawn, mt: MinionType, body: Array<BodyPartConstant>, state: CreepState, nextState: CreepState) {
 
-private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
+    val newName = "${mt.name}_${Game.time}"
+    val code = spawn.spawnCreep(body, newName, options {
+        memory = jsObject<CreepMemory> { this.state = state; this.nextState = nextState; this.minionType = mt }
+    })
+
+    when (code) {
+        OK -> console.log("Spawned $newName; type $mt; state $state; nextState: $nextState; body ${body.toList()}")
+        ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
+        else -> console.log("unhandled error code $code for body $body and name $newName")
+    }
+}
+
+private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn, neededStates: MutableMap<CreepState, Int>) {
 
     spawn.room.memory.debugMessages = false;
     if ((Game.time % 20) != 0) {
         return
     }
 
-    val availableEnergyFromContainers = spawn.room.find(FIND_STRUCTURES)
-        .filter { it.structureType == STRUCTURE_CONTAINER }
-        .map { it.unsafeCast<StructureContainer>()}
-        .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
+    val newState = neededStates.entries.filter { it.value > 0 }.maxByOrNull { it.value } ?: return
 
-    val availableEnergyFromResources = spawn.room.find(FIND_DROPPED_RESOURCES)
-        .filter { it.resourceType == RESOURCE_ENERGY }
-        .sumOf {it.amount }
-
-    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainers
-
-    val availableCarry = creeps
-        .filter {it.memory.role == Role.HARVESTER }
-        .sumOf { it.store.getCapacity() ?: 0}
-
-    val neededHarvester = if ((availableCarry < availableEnergy) && (creeps.count {it.memory.role == Role.HARVESTER} < MAX_HARVESTERS))
-        { 1 } else { 0 }
-
-    console.log("Available Energy: $availableEnergy (Container $availableEnergyFromContainers + Resource $availableEnergyFromResources); Available Carry: $availableCarry")
-
-    val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
-        in (0 .. 10000) -> 4
-        in (10000 .. 20000) -> 3
-        in (20000 .. 30000) -> 2
-        else -> 0
-    }
-
-    val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
-
-    val minersSupported = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
-
-    val cSites = spawn.room.find(FIND_CONSTRUCTION_SITES).count()
-    val supportedBuilders = when(cSites) {
-        0 -> 0
-        in (1..4) -> 1
-        else -> (cSites / 5) + 1
-    }
-
-    val neededRoles: Map<Role, Int> = mapOf(
-        Role.BUILDER to max(0, supportedBuilders - creeps.count {it.memory.role == Role.BUILDER}),
-        Role.HARVESTER to neededHarvester,
-        Role.UPGRADER to max(0, neededUpgraders - creeps.count {it.memory.role == Role.UPGRADER}),
-        Role.GUARDIAN to max(0, neededGuardians - creeps.count {it.memory.role == Role.GUARDIAN}),
-        Role.MINER to max(0, minersSupported - creeps.count() {it.memory.role == Role.MINER}),
-        Role.REPAIRER to max(0, 2 - creeps.count() {it.memory.role == Role.REPAIRER}),
-        Role.DEFENSE_BUILDER to max(0, 2 - creeps.count() {it.memory.role == Role.DEFENSE_BUILDER})
-    )
-
-    var neededTypes: MutableSet<MinionType> = HashSet()
     for (mt in MinionType.values()) {
-        val supportedRoles = mt.validRoles
-        for (vr in supportedRoles) {
-            if (neededRoles.containsKey(vr) && neededRoles[vr] > 0) {
-                neededTypes.add(mt)
+        if (mt.validStates.contains(newState.key)) {
+            val body = getCreepParts(mt, spawn.room.energyAvailable)
+            if (body != null && body.isNotEmpty()) {
+                val newStates = if (newState.key.requiresGetEnergy) {
+                    Pair(CreepState.GETTING_ENERGY, newState.key)
+                } else {
+                    Pair(newState.key, CreepState.IDLE)
+                }
+                spawnCreep(spawn, mt, body, newStates.first, newStates.second)
+                break
             }
         }
     }
-
-    var minionType: MinionType = MinionType.GENERIC
-    var role: Role = Role.HARVESTER
-    var maxNeeded = 0
-    var buildBody: Array<BodyPartConstant>? = null
-
-    for (mt in neededTypes) {
-        val body = getCreepParts(mt, spawn.room.energyAvailable)
-        if (body == null || body.isEmpty()) continue
-        for (vr in mt.validRoles) {
-            if (neededRoles.getOrElse(vr) {0} > maxNeeded) {
-                role = vr
-                maxNeeded = neededRoles[vr]!!
-                minionType = mt
-                buildBody = body
-                break;
-            }
-        }
-    }
-
-    val creepsByRole = creeps
-        .groupBy { it.memory.role }
-        .map { Pair(it.key, it.value.count()) }
-
-    console.log("CreepsByRole: $creepsByRole")
-    console.log("Spawn selections - minionType: $minionType; body: $buildBody; neededRoles: $neededRoles; role: $role")
-
-
-    if (buildBody != null && buildBody.isNotEmpty()) {
-        val newName = "${role.name}_${Game.time}"
-        val code = spawn.spawnCreep(buildBody, newName, options {
-            memory = jsObject<CreepMemory> { this.role = role; this.minionType = minionType }
-        })
-
-        when (code) {
-            OK -> console.log("Spawned $newName; type $minionType; role $role; body ${buildBody.toList()}")
-            ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
-            else -> console.log("unhandled error code $code for body $buildBody and name $newName")
-        }
-    }
+    var creepsByState = creeps.groupBy { Pair(it.memory.state, it.memory.nextState) }.map { Pair(it.key, it.value.count()) }
+    console.log("Current States: $creepsByState")
 }
 
 private fun houseKeeping(creeps: Record<String, Creep>) {

@@ -6,5 +6,6 @@ enum class TargetType {
     DROPPED_RESOURCE,
     SOURCE,
     CREEP,
-    TOMBSTONE
+    TOMBSTONE,
+    CONSTRUCTION_SITE
 }

@@ -20,12 +20,12 @@ object Refill: Behavior() {
      }
 
     override fun plan(creep: Creep) {
-        if (creep.memory.targetId != null) return
+        if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
 
         val storages = Context.myStuctures
             .map { it.value }
             .filter { it.structureType == STRUCTURE_STORAGE }
-            .map { unsafeCast<StructureStorage>() }
+            .map { it.unsafeCast<StructureStorage>() }
             .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > creep.store.getCapacity() }
             .sortedBy { it.pos.getRangeTo(creep) }
 
@@ -49,7 +49,7 @@ object Refill: Behavior() {
         val containers = Context.myStuctures
             .map { it.value }
             .filter { it.structureType == STRUCTURE_CONTAINER }
-            .map { unsafeCast<StructureContainer>() }
+            .map { it.unsafeCast<StructureContainer>() }
             .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > creep.store.getCapacity() }
             .sortedBy { it.pos.getRangeTo(creep) }
 
@@ -74,6 +74,7 @@ object Refill: Behavior() {
     }
 
     private fun<T: HasPosition> getEnergy(creep: Creep, target: T?, executor: (creep: Creep, target: T) -> ScreepsReturnCode) {
+        creep.sayMessage("Getting Energy from $target")
         if (target == null) return
         when (val getResult = executor.invoke(creep, target)) {
             OK -> Unit
@@ -83,6 +84,7 @@ object Refill: Behavior() {
     }
 
     override fun execute(creep: Creep) {
+        // creep.sayMessage("TargetType: ${creep.memory.targetType}; TargetStructureType: ${creep.memory.targetStructureType}; TargetId: ${creep.memory.targetId}")
         when (creep.memory.targetType) {
             TargetType.STRUCTURE -> {
                 val target = Game.getObjectById<StoreOwner>(creep.memory.targetId)

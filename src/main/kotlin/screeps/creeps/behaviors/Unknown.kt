@@ -5,14 +5,12 @@ import screeps.creeps.CreepState
 
 object Unknown: Behavior() {
     override fun update(creep: Creep): CreepState {
-        TODO("Not yet implemented")
+        return CreepState.UNKNOWN
     }
 
     override fun plan(creep: Creep) {
-        TODO("Not yet implemented")
     }
 
     override fun execute(creep: Creep) {
-        TODO("Not yet implemented")
     }
 }

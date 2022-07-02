@@ -1,19 +1,6 @@
 package screeps.creeps.behaviors
 
-import screeps.api.Creep
-import screeps.creeps.CreepState
+import screeps.api.*
 
-object RepairWalls : Behavior() {
-    override fun update(creep: Creep): CreepState {
-        TODO("Not yet implemented")
-    }
-
-    override fun plan(creep: Creep) {
-        TODO("Not yet implemented")
-    }
-
-    override fun execute(creep: Creep) {
-        TODO("Not yet implemented")
-    }
-
+object RepairWalls : RepairBase(listOf(STRUCTURE_WALL, STRUCTURE_RAMPART)) {
 }

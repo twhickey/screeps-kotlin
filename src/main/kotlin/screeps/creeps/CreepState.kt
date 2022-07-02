@@ -2,18 +2,18 @@ package screeps.creeps
 
 import screeps.creeps.behaviors.*
 
-enum class CreepState(val impl: Behavior) {
-    UNKNOWN(Unknown),
-    IDLE(Idle),
-    BUSY(Busy),
-    GETTING_ENERGY(Refill),
-    MINE(Mine),
-    TRANSFERRING_ENERGY(Transfer),
-    BUILDING(Build),
-    UPGRADING(Upgrade),
-    REPAIR(Repair),
-    REPAIR_WALLS(RepairWalls),
-    GUARDING(Guard);
+enum class CreepState(val impl: Behavior, val requiresGetEnergy: Boolean) {
+    UNKNOWN(Unknown, false),
+    IDLE(Idle, false),
+    BUSY(Busy, false),
+    GETTING_ENERGY(Refill, true),
+    MINE(Mine, false),
+    TRANSFERRING_ENERGY(Transfer, true),
+    BUILDING(Build, true),
+    UPGRADING(Upgrade, true),
+    REPAIR(Repair, true),
+    REPAIR_WALLS(RepairWalls, true),
+    GUARDING(Guard, false);
 
     companion object {
         fun getState(fromMemory: Enum<CreepState>): CreepState {

@@ -5,7 +5,6 @@ import screeps.api.*
 import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.creeps.*
-import screeps.creeps.roles.Role
 import screeps.pause
 import screeps.rooms.getAllStructures
 
@@ -64,7 +63,7 @@ object Mine: Behavior() {
     }
 
     private fun isContainerClaimed(container: Structure, myId: String): Boolean {
-        val creepsOnContainer = container.room.find(FIND_MY_CREEPS).filter { (it.memory.role == Role.MINER) && (it.id != myId) && (it.memory.targetId == container.id) }
+        val creepsOnContainer = container.room.find(FIND_MY_CREEPS).filter { (it.memory.state == CreepState.MINE) && (it.id != myId) && (it.memory.targetId == container.id) }
         return creepsOnContainer.isNotEmpty()
     }
 }

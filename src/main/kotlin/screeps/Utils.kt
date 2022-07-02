@@ -4,6 +4,7 @@ import screeps.api.*
 import screeps.api.structures.StructureSpawn
 import screeps.creeps.BodyPartSpec
 import screeps.creeps.MinionType
+import screeps.creeps.pause
 import kotlin.math.floor
 import kotlin.math.min
 
@@ -56,4 +57,14 @@ fun createConstructionSite(mainSpawn: StructureSpawn, pos: RoomPosition, type: S
 
 fun Creep.sayMessage(msg: String) {
     console.log("Creep ${this.name}: $msg")
+}
+
+fun Creep.pause() {
+    if (memory.pause < 10) {
+        //blink slowly
+        if (memory.pause % 3 != 0) say("\uD83D\uDEAC")
+        memory.pause++
+    } else {
+        memory.pause = 0
+    }
 }

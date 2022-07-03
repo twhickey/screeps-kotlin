@@ -1,11 +1,8 @@
 package screeps.creeps.behaviors
 
-import screeps.TargetType
+import screeps.*
 import screeps.api.*
 import screeps.creeps.*
-import screeps.moveToTarget
-import screeps.resetTarget
-import screeps.sayMessage
 
 object Build : Behavior() {
 
@@ -19,8 +16,11 @@ object Build : Behavior() {
     }
 
     override fun plan(creep: Creep) {
-        if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) {
-            return
+        // Hack - replan every 10 ticks
+        if(Game.time % 10 == 0) {
+            if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) {
+                return
+            }
         }
 
         val targets = creep.room.find(FIND_MY_CONSTRUCTION_SITES)
@@ -33,14 +33,14 @@ object Build : Behavior() {
                     break;
                 }
             }
+            creep.sayMessage("FirstTarget for Build: $firstTarget")
             if (firstTarget != null) {
                 creep.memory.targetType = TargetType.CONSTRUCTION_SITE
                 creep.memory.targetStructureType = firstTarget.structureType
                 creep.memory.targetId = firstTarget.id
             }
         } else {
-            creep.resetTarget()
-            creep.memory.state = CreepState.IDLE
+            creep.goIdle()
         }
     }
 
@@ -48,6 +48,7 @@ object Build : Behavior() {
         if (creep.memory.targetType == TargetType.CONSTRUCTION_SITE) {
             val target = Game.getObjectById<ConstructionSite>(creep.memory.targetId)
             if (target != null) {
+                creep.sayMessage("Building $target: ${target.structureType}")
                 val buildResult = creep.build(target)
                 when (buildResult) {
                     OK -> Unit
@@ -55,7 +56,7 @@ object Build : Behavior() {
                     else -> creep.sayMessage("Failed to build $target due to $buildResult")
                 }
             } else {
-                creep.memory.targetType == TargetType.NONE
+                creep.resetTarget()
             }
         }
     }

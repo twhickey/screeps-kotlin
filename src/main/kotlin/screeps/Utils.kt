@@ -79,3 +79,9 @@ fun Creep.moveToTarget(target: HasPosition, nonErrors: List<ScreepsReturnCode> =
         else -> sayMessage("State: (${memory.state}, ${memory.nextState}) Failed to move to target $target at ${target.pos} due to $moveResult")
     }
 }
+
+fun Creep.goIdle() {
+    resetTarget()
+    memory.state == CreepState.IDLE
+    memory.nextState = CreepState.IDLE
+}

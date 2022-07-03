@@ -40,7 +40,7 @@ object Transfer : Behavior() {
             return
         }
 
-        creep.memory.state = CreepState.IDLE
+        creep.goIdle()
     }
 
     override fun execute(creep: Creep) {

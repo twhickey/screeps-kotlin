@@ -32,6 +32,7 @@ fun gameLoop() {
         if (nextState != creep.memory.state) {
             creep.sayMessage("Changed states from ${creep.memory.state} to $nextState")
             creep.memory.state = nextState
+            creep.memory.nextState = CreepState.IDLE
             creep.resetTarget()
         }
 

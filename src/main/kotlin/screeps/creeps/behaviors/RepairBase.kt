@@ -7,14 +7,7 @@ import screeps.creeps.*
 import screeps.moveToTarget
 import screeps.sayMessage
 
-open class RepairBase(val priorities: List<StructureConstant>) : Behavior() {
-
-    override fun update(creep: Creep): CreepState {
-        return when (creep.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0) {
-            0 -> CreepState.IDLE
-            else -> CreepState.BUILDING
-        }
-    }
+abstract class RepairBase(val priorities: List<StructureConstant>) : Behavior() {
 
     override fun plan(creep: Creep) {
         if (creep.memory.targetType == TargetType.STRUCTURE && creep.memory.targetId != null) return

@@ -4,6 +4,7 @@ import screeps.TargetType
 import screeps.api.*
 import screeps.creeps.*
 import screeps.moveToTarget
+import screeps.resetTarget
 import screeps.sayMessage
 
 object Build : Behavior() {
@@ -37,6 +38,9 @@ object Build : Behavior() {
                 creep.memory.targetStructureType = firstTarget.structureType
                 creep.memory.targetId = firstTarget.id
             }
+        } else {
+            creep.resetTarget()
+            creep.memory.state = CreepState.IDLE
         }
     }
 

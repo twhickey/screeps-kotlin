@@ -76,6 +76,6 @@ fun Creep.moveToTarget(target: HasPosition, nonErrors: List<ScreepsReturnCode> =
     when (val moveResult = moveTo(target)) {
         ERR_TIRED -> pause()
         in nonErrors -> Unit
-        else -> sayMessage("Moving to target $target at ${target.pos} failed due to $moveResult")
+        else -> sayMessage("State: (${memory.state}, ${memory.nextState}) Failed to move to target $target at ${target.pos} due to $moveResult")
     }
 }

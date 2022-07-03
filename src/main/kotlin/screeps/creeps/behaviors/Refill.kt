@@ -18,7 +18,10 @@ object Refill: Behavior() {
      }
 
     override fun plan(creep: Creep) {
-        if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
+        // Hack - force re-planning every 10 ticks
+        if (Game.time % 10 != 0) {
+            if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
+        }
 
         if (CreepState.getState(creep.memory.nextState) != CreepState.TRANSFERRING_ENERGY) {
             val storages = Context.myStuctures
@@ -46,8 +49,7 @@ object Refill: Behavior() {
             return
         }
 
-        val containers = Context.myStuctures
-            .map { it.value }
+        val containers = creep.room.find(FIND_STRUCTURES)
             .filter { it.structureType == STRUCTURE_CONTAINER }
             .map { it.unsafeCast<StructureContainer>() }
             .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > creep.store.getCapacity() }
@@ -77,9 +79,12 @@ object Refill: Behavior() {
         // creep.sayMessage("Getting Energy from $target")
         if (target == null) return
         when (val getResult = executor.invoke(creep, target)) {
-            OK -> Unit
+            OK, ERR_BUSY -> Unit
             ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
-            else -> creep.sayMessage("Failed to get energy from $target due to $getResult")
+            else -> {
+                creep.sayMessage("Failed to get energy from $target due to $getResult")
+                creep.resetTarget()
+            }
         }
     }
 

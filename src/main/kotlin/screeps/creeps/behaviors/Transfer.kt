@@ -48,7 +48,7 @@ object Transfer : Behavior() {
         if (target != null) {
             when (val result = creep.transfer(target, RESOURCE_ENERGY)) {
                 OK -> Unit
-                ERR_NOT_IN_RANGE -> creep.moveTo(target)
+                ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
                 ERR_FULL -> creep.memory.targetType = TargetType.NONE
                 else -> creep.sayMessage("Failed to transfer energy to $target due to $result")
             }

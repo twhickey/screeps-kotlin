@@ -5,6 +5,7 @@ import screeps.api.*
 import screeps.creeps.CreepState
 import screeps.creeps.state
 import screeps.creeps.targetId
+import screeps.moveToTarget
 import screeps.sayMessage
 
 object Guard : Behavior() {
@@ -39,7 +40,7 @@ object Guard : Behavior() {
             if (target != null) {
                 val attackResult = creep.attack(target)
                 if (attackResult == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target)
+                    creep.moveToTarget(target)
                 } else if (attackResult != OK) {
                     creep.sayMessage("Failed to attack target $target at ${target.pos} due to $attackResult")
                 }

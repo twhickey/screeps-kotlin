@@ -5,7 +5,7 @@ import screeps.api.*
 import screeps.api.structures.Structure
 import screeps.api.structures.StructureContainer
 import screeps.creeps.*
-import screeps.pause
+import screeps.moveToTarget
 import screeps.rooms.getAllStructures
 
 object Mine: Behavior() {
@@ -53,11 +53,7 @@ object Mine: Behavior() {
                 }
             }
         } else {
-            when (val moveResult = creep.moveTo(targetContainer)) {
-                ERR_TIRED -> creep.pause()
-                ERR_BUSY, OK -> Unit
-                else -> creep.sayMessage("Moving to target $targetContainer at ${targetContainer.pos} failed due to $moveResult")
-            }
+            creep.moveToTarget(targetContainer)
         }
     }
 

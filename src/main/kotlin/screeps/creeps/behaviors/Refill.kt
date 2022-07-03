@@ -1,12 +1,9 @@
 package screeps.creeps.behaviors
 
-import screeps.Context
-import screeps.TargetType
+import screeps.*
 import screeps.api.*
 import screeps.api.structures.*
 import screeps.creeps.*
-import screeps.resetTarget
-import screeps.sayMessage
 
 object Refill: Behavior() {
 
@@ -81,7 +78,7 @@ object Refill: Behavior() {
         if (target == null) return
         when (val getResult = executor.invoke(creep, target)) {
             OK -> Unit
-            ERR_NOT_IN_RANGE -> creep.moveTo(target)
+            ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
             else -> creep.sayMessage("Failed to get energy from $target due to $getResult")
         }
     }

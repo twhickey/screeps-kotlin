@@ -71,3 +71,11 @@ fun Creep.resetTarget() {
     memory.targetType = TargetType.NONE
     memory.targetId = null
 }
+
+fun Creep.moveToTarget(target: HasPosition, nonErrors: List<ScreepsReturnCode> = listOf(ERR_BUSY, OK)) {
+    when (val moveResult = moveTo(target)) {
+        ERR_TIRED -> pause()
+        in nonErrors -> Unit
+        else -> sayMessage("Moving to target $target at ${target.pos} failed due to $moveResult")
+    }
+}

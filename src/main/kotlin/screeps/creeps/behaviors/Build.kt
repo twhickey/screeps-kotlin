@@ -3,6 +3,7 @@ package screeps.creeps.behaviors
 import screeps.TargetType
 import screeps.api.*
 import screeps.creeps.*
+import screeps.moveToTarget
 import screeps.sayMessage
 
 object Build : Behavior() {
@@ -46,7 +47,7 @@ object Build : Behavior() {
                 val buildResult = creep.build(target)
                 when (buildResult) {
                     OK -> Unit
-                    ERR_NOT_IN_RANGE -> creep.moveTo(target)
+                    ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
                     else -> creep.sayMessage("Failed to build $target due to $buildResult")
                 }
             } else {

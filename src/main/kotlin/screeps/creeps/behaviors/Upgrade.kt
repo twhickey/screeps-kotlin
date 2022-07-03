@@ -4,6 +4,7 @@ import screeps.TargetType
 import screeps.api.*
 import screeps.api.structures.StructureController
 import screeps.creeps.*
+import screeps.moveToTarget
 import screeps.sayMessage
 
 object Upgrade : Behavior() {
@@ -35,7 +36,7 @@ object Upgrade : Behavior() {
             val upgradeResult = creep.upgradeController(target)
             when (upgradeResult) {
                 OK -> Unit
-                ERR_NOT_IN_RANGE -> creep.moveTo(target)
+                ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
                 else -> creep.sayMessage("Failed to upgrade controller $target due to $upgradeResult")
             }
         } else {

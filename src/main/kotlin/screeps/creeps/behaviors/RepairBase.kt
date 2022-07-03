@@ -4,6 +4,7 @@ import screeps.TargetType
 import screeps.api.*
 import screeps.api.structures.Structure
 import screeps.creeps.*
+import screeps.moveToTarget
 import screeps.sayMessage
 
 open class RepairBase(val priorities: List<StructureConstant>) : Behavior() {
@@ -45,7 +46,7 @@ open class RepairBase(val priorities: List<StructureConstant>) : Behavior() {
             if (target != null) {
                 when (val repairResult = creep.repair(target)) {
                     OK -> Unit
-                    ERR_NOT_IN_RANGE -> creep.moveTo(target)
+                    ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
                     else -> creep.sayMessage("Failed to repair $target due to $repairResult")
                 }
             } else {

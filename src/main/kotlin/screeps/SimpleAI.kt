@@ -78,7 +78,7 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
         in (100 .. 1000) -> 1
         in (1000 .. 2000) -> 2
         in (2000 .. 5000) -> 4
-        else -> min(15, (energy / 1200))
+        else -> min(15, (energy / 800))
     }
 
     val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {

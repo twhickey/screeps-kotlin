@@ -8,22 +8,21 @@ import screeps.goIdle
 import screeps.moveToTarget
 import screeps.sayMessage
 
-abstract class RepairBase(val priorities: List<StructureConstant>) : Behavior() {
+abstract class RepairBase(private val priorities: List<StructureConstant>) : Behavior() {
 
     override fun plan(creep: Creep) {
         if (creep.memory.targetType == TargetType.STRUCTURE && creep.memory.targetId != null) return
 
-        val repairPriorities = creep.room.find(FIND_STRUCTURES)
+        val repairTargets = creep.room.find(FIND_STRUCTURES)
             .asSequence()
             .filter { priorities.contains(it.structureType) }
             .filter { it.hits < it.hitsMax }
-            .map { Triple(it, it.hitsMax.toFloat() / it.hits.toFloat(), it.pos.getRangeTo(creep.pos).toFloat()) }
-            .sortedByDescending { it.second / it.third }
+            .map { Pair(it, getRepairPriority(it)) }
+            .sortedWith(compareBy({it.second}, {it.first.pos.getRangeTo(creep)}))
             .toList()
 
-        val repairTargets = repairPriorities.map { it.first }
         if(repairTargets.isNotEmpty()) {
-            val target = repairTargets.first()
+            val target = repairTargets.first().first
             creep.memory.targetType = TargetType.STRUCTURE
             creep.memory.targetStructureType = target.structureType
             creep.memory.targetId = target.id
@@ -48,4 +47,7 @@ abstract class RepairBase(val priorities: List<StructureConstant>) : Behavior() 
             }
         }
     }
+
+    abstract fun getRepairPriority(structure: Structure): Int
+
 }

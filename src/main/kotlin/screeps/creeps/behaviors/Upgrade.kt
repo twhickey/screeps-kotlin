@@ -10,7 +10,7 @@ object Upgrade : Behavior() {
     override fun update(creep: Creep): CreepState {
         return when (creep.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0) {
             0 -> CreepState.IDLE
-            else -> CreepState.BUILDING
+            else -> CreepState.UPGRADING
         }
     }
 

@@ -6,7 +6,7 @@ enum class CreepState(val impl: Behavior, val requiresGetEnergy: Boolean) {
     UNKNOWN(Unknown, false),
     IDLE(Idle, false),
     BUSY(Busy, false),
-    GETTING_ENERGY(Refill, true),
+    GETTING_ENERGY(Refill, false),
     MINE(Mine, false),
     TRANSFERRING_ENERGY(Transfer, true),
     BUILDING(Build, true),

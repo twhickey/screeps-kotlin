@@ -26,12 +26,24 @@ fun gameLoop() {
     spawnCreeps(Game.creeps.values, mainSpawn, neededStates)
 
     for ((_, creep) in Game.creeps) {
-        val creepStateImpl = creep.memory.state.unsafeCast<CreepState>().impl
+        var creepStateImpl = CreepState.getState(creep.memory.state).impl
         val nextState = creepStateImpl.update(creep)
-        creep.memory.state = nextState
+
+        if (nextState != creep.memory.state) {
+            creep.sayMessage("Changed states from ${creep.memory.state} to $nextState")
+            creep.memory.state = nextState
+            creep.resetTarget()
+        }
+
+        creepStateImpl = CreepState.getState(creep.memory.state).impl
         creepStateImpl.plan(creep)
         creepStateImpl.execute(creep)
     }
+}
+
+private fun activeCreeps(creeps: List<Creep>, state: CreepState): Int {
+    return creeps.count {
+        (it.memory.state == state) || (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == state) }
 }
 
 private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<CreepState, Int> {
@@ -39,7 +51,10 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
     creeps.filter { it.memory.state == CreepState.UNKNOWN || it.memory.state == CreepState.BUSY }
         .forEach { it.memory.state = CreepState.IDLE }
 
-    val availableCreeps = creeps.filter { it.memory.state == CreepState.IDLE }
+    val partitioned = creeps.partition { it.memory.state == CreepState.IDLE }
+    val availableCreeps = partitioned.first
+    val activeCreeps = partitioned.second
+
     if (Game.time % 20 == 0) console.log("Idle Creeps: ${availableCreeps.count()}")
 
     val availableEnergyFromContainers = spawn.room.find(FIND_STRUCTURES)
@@ -84,13 +99,13 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
     }
 
     val neededStates: MutableMap<CreepState, Int> = mutableMapOf(
-        CreepState.BUILDING to supportedBuilders,
-        CreepState.TRANSFERRING_ENERGY to neededHarvesters,
-        CreepState.UPGRADING to neededUpgraders,
-        CreepState.GUARDING to neededGuardians,
-        CreepState.MINE to minersSupported,
-        CreepState.REPAIR to 2,
-        CreepState.REPAIR_WALLS to 2
+        CreepState.BUILDING to supportedBuilders - activeCreeps(activeCreeps, CreepState.BUILDING),
+        CreepState.TRANSFERRING_ENERGY to neededHarvesters - activeCreeps(activeCreeps, CreepState.TRANSFERRING_ENERGY),
+        CreepState.UPGRADING to neededUpgraders - activeCreeps(activeCreeps, CreepState.UPGRADING),
+        CreepState.GUARDING to neededGuardians - activeCreeps(activeCreeps, CreepState.GUARDING),
+        CreepState.MINE to minersSupported - activeCreeps(activeCreeps, CreepState.MINE),
+        CreepState.REPAIR to  2 - activeCreeps(activeCreeps, CreepState.REPAIR),
+        CreepState.REPAIR_WALLS to 2 - activeCreeps(activeCreeps, CreepState.REPAIR_WALLS)
     )
 
     for (ac in availableCreeps) {
@@ -171,6 +186,8 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn, neededState
     }
 
     val newState = neededStates.entries.filter { it.value > 0 }.maxByOrNull { it.value } ?: return
+
+    console.log("Needed States: $newState")
 
     for (mt in MinionType.values()) {
         if (mt.validStates.contains(newState.key)) {

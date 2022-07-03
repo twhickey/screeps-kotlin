@@ -53,11 +53,10 @@ object Mine: Behavior() {
                 }
             }
         } else {
-            val moveResult = creep.moveTo(targetContainer)
-            if (moveResult == ERR_TIRED) {
-                creep.pause()
-            } else {
-                creep.sayMessage("Moving to target $targetContainer at ${targetContainer.pos} failed due to $moveResult")
+            when (val moveResult = creep.moveTo(targetContainer)) {
+                ERR_TIRED -> creep.pause()
+                ERR_BUSY, OK -> Unit
+                else -> creep.sayMessage("Moving to target $targetContainer at ${targetContainer.pos} failed due to $moveResult")
             }
         }
     }

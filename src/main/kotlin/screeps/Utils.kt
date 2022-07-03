@@ -2,9 +2,7 @@ package screeps
 
 import screeps.api.*
 import screeps.api.structures.StructureSpawn
-import screeps.creeps.BodyPartSpec
-import screeps.creeps.MinionType
-import screeps.creeps.pause
+import screeps.creeps.*
 import kotlin.math.floor
 import kotlin.math.min
 
@@ -67,4 +65,9 @@ fun Creep.pause() {
     } else {
         memory.pause = 0
     }
+}
+
+fun Creep.resetTarget() {
+    memory.targetType = TargetType.NONE
+    memory.targetId = null
 }

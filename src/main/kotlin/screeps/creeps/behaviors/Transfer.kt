@@ -13,11 +13,11 @@ val DELIVERY_PRIORITIES: Map<StructureConstant, Int> = mapOf(
 
 object Transfer : Behavior() {
     override fun update(creep: Creep): CreepState {
-        return when {
-                creep.store.getUsedCapacity(RESOURCE_ENERGY) == 0 -> CreepState.GETTING_ENERGY
-                else -> CreepState.IDLE
-            }
+        return when (creep.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0) {
+            0 -> CreepState.IDLE
+            else -> CreepState.TRANSFERRING_ENERGY
         }
+    }
 
     private fun toStructurePriority(structureType: StructureConstant) :Int {
         return DELIVERY_PRIORITIES.getOrElse(structureType) { 37 }
@@ -49,6 +49,7 @@ object Transfer : Behavior() {
             when (val result = creep.transfer(target, RESOURCE_ENERGY)) {
                 OK -> Unit
                 ERR_NOT_IN_RANGE -> creep.moveTo(target)
+                ERR_FULL -> creep.memory.targetType = TargetType.NONE
                 else -> creep.sayMessage("Failed to transfer energy to $target due to $result")
             }
         }

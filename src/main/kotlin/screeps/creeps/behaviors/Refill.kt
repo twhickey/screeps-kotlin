@@ -5,6 +5,7 @@ import screeps.TargetType
 import screeps.api.*
 import screeps.api.structures.*
 import screeps.creeps.*
+import screeps.resetTarget
 import screeps.sayMessage
 
 object Refill: Behavior() {
@@ -22,18 +23,20 @@ object Refill: Behavior() {
     override fun plan(creep: Creep) {
         if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
 
-        val storages = Context.myStuctures
-            .map { it.value }
-            .filter { it.structureType == STRUCTURE_STORAGE }
-            .map { it.unsafeCast<StructureStorage>() }
-            .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > creep.store.getCapacity() }
-            .sortedBy { it.pos.getRangeTo(creep) }
+        if (CreepState.getState(creep.memory.nextState) != CreepState.TRANSFERRING_ENERGY) {
+            val storages = Context.myStuctures
+                .map { it.value }
+                .filter { it.structureType == STRUCTURE_STORAGE }
+                .map { it.unsafeCast<StructureStorage>() }
+                .filter { it.store.getUsedCapacity(RESOURCE_ENERGY) > creep.store.getCapacity() }
+                .sortedBy { it.pos.getRangeTo(creep) }
 
-        if (storages.isNotEmpty()) {
-            creep.memory.targetId = storages[0].id
-            creep.memory.targetType = TargetType.STRUCTURE
-            creep.memory.targetStructureType = STRUCTURE_STORAGE
-            return
+            if (storages.isNotEmpty()) {
+                creep.memory.targetId = storages[0].id
+                creep.memory.targetType = TargetType.STRUCTURE
+                creep.memory.targetStructureType = STRUCTURE_STORAGE
+                return
+            }
         }
 
         val dropped = creep.room.find(FIND_DROPPED_RESOURCES)
@@ -74,7 +77,7 @@ object Refill: Behavior() {
     }
 
     private fun<T: HasPosition> getEnergy(creep: Creep, target: T?, executor: (creep: Creep, target: T) -> ScreepsReturnCode) {
-        creep.sayMessage("Getting Energy from $target")
+        // creep.sayMessage("Getting Energy from $target")
         if (target == null) return
         when (val getResult = executor.invoke(creep, target)) {
             OK -> Unit
@@ -98,7 +101,7 @@ object Refill: Behavior() {
                 val target = Game.getObjectById<Resource>(creep.memory.targetId)
                 getEnergy(creep, target) { c, r -> creep.pickup(r) }
             }
-            else -> Unit
+            else -> creep.resetTarget()
         }
     }
 }

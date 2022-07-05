@@ -16,12 +16,7 @@ object Build : Behavior() {
     }
 
     override fun plan(creep: Creep) {
-        // Hack - replan every 10 ticks
-        if(Game.time % 10 == 0) {
-            if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) {
-                return
-            }
-        }
+        if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
 
         val targets = creep.room.find(FIND_MY_CONSTRUCTION_SITES)
         if (targets.isNotEmpty()) {
@@ -33,12 +28,9 @@ object Build : Behavior() {
                     break;
                 }
             }
-            creep.sayMessage("FirstTarget for Build: $firstTarget")
-            if (firstTarget != null) {
-                creep.memory.targetType = TargetType.CONSTRUCTION_SITE
-                creep.memory.targetStructureType = firstTarget.structureType
-                creep.memory.targetId = firstTarget.id
-            }
+            creep.memory.targetType = TargetType.CONSTRUCTION_SITE
+            creep.memory.targetStructureType = firstTarget.structureType
+            creep.memory.targetId = firstTarget.id
         } else {
             creep.goIdle()
         }
@@ -48,7 +40,7 @@ object Build : Behavior() {
         if (creep.memory.targetType == TargetType.CONSTRUCTION_SITE) {
             val target = Game.getObjectById<ConstructionSite>(creep.memory.targetId)
             if (target != null) {
-                creep.sayMessage("Building $target: ${target.structureType}")
+                // creep.sayMessage("Building $target: ${target.structureType}")
                 val buildResult = creep.build(target)
                 when (buildResult) {
                     OK -> Unit

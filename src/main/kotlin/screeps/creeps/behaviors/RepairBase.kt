@@ -1,12 +1,9 @@
 package screeps.creeps.behaviors
 
-import screeps.TargetType
+import screeps.*
 import screeps.api.*
 import screeps.api.structures.Structure
 import screeps.creeps.*
-import screeps.goIdle
-import screeps.moveToTarget
-import screeps.sayMessage
 
 abstract class RepairBase(private val priorities: List<StructureConstant>) : Behavior() {
 
@@ -27,7 +24,7 @@ abstract class RepairBase(private val priorities: List<StructureConstant>) : Beh
             creep.memory.targetStructureType = target.structureType
             creep.memory.targetId = target.id
         } else {
-            creep.memory.targetType = TargetType.NONE
+            creep.goIdle()
         }
     }
 
@@ -36,14 +33,14 @@ abstract class RepairBase(private val priorities: List<StructureConstant>) : Beh
             creep.goIdle()
         } else {
             val target = Game.getObjectById<Structure>(creep.memory.targetId)
-            if (target != null) {
+            if (target != null && (target.hits < target.hitsMax)) {
                 when (val repairResult = creep.repair(target)) {
-                    OK -> Unit
+                    OK, ERR_BUSY -> Unit
                     ERR_NOT_IN_RANGE -> creep.moveToTarget(target)
                     else -> creep.sayMessage("Failed to repair $target due to $repairResult")
                 }
             } else {
-                creep.goIdle()
+                creep.resetTarget()
             }
         }
     }

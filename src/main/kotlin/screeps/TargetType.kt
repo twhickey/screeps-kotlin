@@ -7,5 +7,6 @@ enum class TargetType {
     SOURCE,
     CREEP,
     TOMBSTONE,
-    CONSTRUCTION_SITE
+    CONSTRUCTION_SITE,
+    EXIT
 }

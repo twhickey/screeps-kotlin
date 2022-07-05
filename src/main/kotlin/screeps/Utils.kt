@@ -37,8 +37,7 @@ fun calculateCost(bodyPartPriorities: Map<BodyPartConstant, BodyPartSpec>, level
     val bodyPartCounts = bodyPartPriorities
         .map { Pair(it.key, calculateCount(level, it.value)) }
         .toMap()
-    val cost = bodyPartCounts.map { (bp, c) -> c * BODYPART_COST[bp]!! }.sum()
-    return cost
+    return bodyPartCounts.map { (bp, c) -> c * BODYPART_COST[bp]!! }.sum()
 }
 
 fun calculateCount(level: Int, spec: BodyPartSpec): Int {
@@ -70,18 +69,25 @@ fun Creep.pause() {
 fun Creep.resetTarget() {
     memory.targetType = TargetType.NONE
     memory.targetId = null
+    memory.targetX = 0
+    memory.targetY = 0
+    memory.targetRoom = null
 }
 
-fun Creep.moveToTarget(target: HasPosition, nonErrors: List<ScreepsReturnCode> = listOf(ERR_BUSY, OK)) {
-    when (val moveResult = moveTo(target)) {
+fun Creep.moveToTarget(target: HasPosition, nonErrors: List<ScreepsReturnCode> = listOf(ERR_BUSY, OK), opts: MoveToOptions = options {}) {
+    moveToTarget(target.pos, nonErrors, opts)
+}
+
+fun Creep.moveToTarget(target: RoomPosition, nonErrors: List<ScreepsReturnCode> = listOf(ERR_BUSY, OK), opts: MoveToOptions = options {}) {
+    when (val moveResult = moveTo(target.x, target.y, opts)) {
         ERR_TIRED -> pause()
         in nonErrors -> Unit
-        else -> sayMessage("State: (${memory.state}, ${memory.nextState}) Failed to move to target $target at ${target.pos} due to $moveResult")
+        else -> sayMessage("State: (${memory.state}, ${memory.nextState}) Failed to move to $target due to $moveResult")
     }
 }
 
 fun Creep.goIdle() {
     resetTarget()
-    memory.state == CreepState.IDLE
+    memory.state = CreepState.IDLE
     memory.nextState = CreepState.IDLE
 }

@@ -4,22 +4,13 @@ import screeps.*
 import screeps.api.*
 import screeps.creeps.*
 
-val DELIVERY_PRIORITIES: Map<StructureConstant, Int> = mapOf(
-    STRUCTURE_TOWER to 1,
-    STRUCTURE_EXTENSION to 3,
-    STRUCTURE_SPAWN to 5
-)
 
-object Transfer : Behavior() {
+object Haul : Behavior() {
     override fun update(creep: Creep): CreepState {
         return when (creep.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0) {
             0 -> CreepState.IDLE
-            else -> CreepState.TRANSFERRING_ENERGY
+            else -> CreepState.HAUL
         }
-    }
-
-    private fun toStructurePriority(structureType: StructureConstant) :Int {
-        return DELIVERY_PRIORITIES.getOrElse(structureType) { 37 }
     }
 
     override fun plan(creep: Creep) {
@@ -27,9 +18,9 @@ object Transfer : Behavior() {
         if (creep.memory.targetType != TargetType.NONE && creep.memory.targetId != null) return
 
         val targets = creep.room.find(FIND_MY_STRUCTURES)
-            .filter { (it.structureType == STRUCTURE_TOWER || it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
-            .map { Triple(it, toStructurePriority(it.structureType), creep.pos.getRangeTo(it)) }
-            .sortedWith(compareBy({it.second}, {it.third}))
+            .filter { (it.structureType == STRUCTURE_STORAGE) }
+            .map { Pair(it, creep.pos.getRangeTo(it)) }
+            .sortedBy { it.second }
             .map { Pair(it.first.unsafeCast<StoreOwner>(), it.first.structureType) }
             .filter { it.first.store[RESOURCE_ENERGY] < it.first.store.getCapacity(RESOURCE_ENERGY) }
 

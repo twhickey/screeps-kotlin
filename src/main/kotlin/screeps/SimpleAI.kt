@@ -4,6 +4,7 @@ import screeps.flags.handleFlags
 import screeps.api.*
 import screeps.api.structures.StructureContainer
 import screeps.api.structures.StructureSpawn
+import screeps.api.structures.StructureStorage
 import screeps.creeps.*
 import screeps.utils.isEmpty
 import screeps.utils.unsafe.delete
@@ -15,6 +16,8 @@ fun gameLoop() {
 
     //delete memories of creeps that have passed away
     houseKeeping(Game.creeps)
+
+    roomReport(mainSpawn)
 
     handleFlags(mainSpawn)
 
@@ -30,7 +33,7 @@ fun gameLoop() {
         val nextState = creepStateImpl.update(creep)
 
         if (nextState != creep.memory.state) {
-            creep.sayMessage("Changed states from ${creep.memory.state} to $nextState")
+            // creep.sayMessage("Changed states from ${creep.memory.state} to $nextState")
             creep.memory.state = nextState
             creep.memory.nextState = CreepState.IDLE
             creep.resetTarget()
@@ -42,9 +45,19 @@ fun gameLoop() {
     }
 }
 
+fun roomReport(mainSpawn: StructureSpawn) {
+    if (Game.time % 20 != 10) return
+
+    for (room in Context.rooms.entries) {
+        console.log("${room.value}")
+    }
+}
+
 private fun activeCreeps(creeps: List<Creep>, state: CreepState): Int {
     return creeps.count {
-        (it.memory.state == state) || (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == state) }
+        (it.memory.state == state) ||
+                (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == state) ||
+                (it.memory.state == CreepState.FILLING_FOR_HAUL && it.memory.nextState == state) }
 }
 
 private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<CreepState, Int> {
@@ -70,7 +83,7 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
     val availableEnergy = availableEnergyFromResources + availableEnergyFromContainers
 
     val currentCarry = creeps
-        .filter {it.memory.state == CreepState.GETTING_ENERGY }
+        .filter { (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == CreepState.HAUL) || ( it.memory.state == CreepState.HAUL ) }
         .sumOf { it.store.getCapacity() ?: 0}
 
     val neededHarvesters = when (val energy = availableEnergy - currentCarry) {
@@ -81,12 +94,26 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
         else -> min(15, (energy / 800))
     }
 
+    val storedEnergy = spawn.room.find(FIND_MY_STRUCTURES)
+        .filter { it.structureType == STRUCTURE_STORAGE }
+        .map { it.unsafeCast<StructureStorage>() }
+        .sumBy {it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0}
+
+    val additionalUpgraders = when (storedEnergy) {
+        in (0 .. 10000) -> 0
+        in (10000 .. 100000) -> 1
+        in (10000 .. 250000) -> 2
+        else -> (storedEnergy % 250000) + 2
+    }
+
     val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
         in (0 .. 10000) -> 4
         in (10000 .. 20000) -> 3
         in (20000 .. 30000) -> 2
         else -> 0
-    }
+    } + additionalUpgraders
+
+    val neededScouts = 0 // if (spawn.room.controller?.level > 2 ) { 1 } else { 0 }
 
     val neededGuardians = spawn.room.find(FIND_HOSTILE_CREEPS).count()
 
@@ -101,12 +128,14 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
 
     val neededStates: MutableMap<CreepState, Int> = mutableMapOf(
         CreepState.BUILDING to supportedBuilders - activeCreeps(activeCreeps, CreepState.BUILDING),
-        CreepState.TRANSFERRING_ENERGY to neededHarvesters - activeCreeps(activeCreeps, CreepState.TRANSFERRING_ENERGY),
+        CreepState.HAUL to neededHarvesters - activeCreeps(activeCreeps, CreepState.HAUL),
+        CreepState.TRANSFERRING_ENERGY to 2 - activeCreeps(activeCreeps, CreepState.TRANSFERRING_ENERGY),
         CreepState.UPGRADING to neededUpgraders - activeCreeps(activeCreeps, CreepState.UPGRADING),
         CreepState.GUARDING to neededGuardians - activeCreeps(activeCreeps, CreepState.GUARDING),
         CreepState.MINE to minersSupported - activeCreeps(activeCreeps, CreepState.MINE),
         CreepState.REPAIR to  2 - activeCreeps(activeCreeps, CreepState.REPAIR),
-        CreepState.REPAIR_WALLS to 2 - activeCreeps(activeCreeps, CreepState.REPAIR_WALLS)
+        CreepState.REPAIR_WALLS to 2 - activeCreeps(activeCreeps, CreepState.REPAIR_WALLS),
+        CreepState.SCOUT to neededScouts - activeCreeps(activeCreeps, CreepState.SCOUT)
     )
 
     for (ac in availableCreeps) {
@@ -116,12 +145,15 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
             .sortedByDescending { it.value }
             .map { it.key }
             .firstOrNull { validStates.contains(it)} ?: CreepState.TRANSFERRING_ENERGY
-        if (newState.requiresGetEnergy) {
-            ac.memory.state = CreepState.GETTING_ENERGY
+
+        if (newState.refillState != CreepState.UNKNOWN) {
+            ac.memory.state = newState.refillState
             ac.memory.nextState = newState
         } else {
             ac.memory.state = newState
+            ac.memory.nextState = CreepState.IDLE
         }
+        console.log("Reassigned Idle Creep $ac to (${ac.memory.state}, ${ac.memory.nextState})")
         neededStates[newState] = neededStates[newState]!! - 1
     }
     return neededStates
@@ -169,7 +201,7 @@ private fun spawnCreep(spawn: StructureSpawn, mt: MinionType, body: Array<BodyPa
 
     val newName = "${mt.name}_${Game.time}"
     val code = spawn.spawnCreep(body, newName, options {
-        memory = jsObject<CreepMemory> { this.state = state; this.nextState = nextState; this.minionType = mt }
+        memory = jsObject<CreepMemory> { this.state = state; this.nextState = nextState; this.minionType = mt; this.homeRoom = spawn.room.name }
     })
 
     when (code) {
@@ -193,11 +225,11 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn, neededState
     for (mt in MinionType.values()) {
         if (mt.validStates.contains(newState.key)) {
             val body = getCreepParts(mt, spawn.room.energyAvailable)
-            if (body != null && body.isNotEmpty()) {
-                val newStates = if (newState.key.requiresGetEnergy) {
-                    Pair(CreepState.GETTING_ENERGY, newState.key)
-                } else {
+            if (body.isNotEmpty()) {
+                val newStates = if (newState.key.refillState == CreepState.UNKNOWN) {
                     Pair(newState.key, CreepState.IDLE)
+                } else {
+                    Pair(newState.key.refillState, newState.key)
                 }
                 spawnCreep(spawn, mt, body, newStates.first, newStates.second)
                 break

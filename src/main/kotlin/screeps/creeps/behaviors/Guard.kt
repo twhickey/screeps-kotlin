@@ -27,9 +27,12 @@ object Guard : Behavior() {
             .filter { it.value.memory.state == CreepState.GUARDING }
             .filter { it.value.id != creep.id }
             .map { Game.getObjectById<Creep>(it.key) }
+            .filterNotNull()
 
-        val target = alreadyEngagedTargets.first() ?: targets.first()
-        creep.memory.targetId = target.id
+        if (alreadyEngagedTargets.isNotEmpty()) {
+            val target = alreadyEngagedTargets.first()
+            creep.memory.targetId = target.id
+        }
     }
 
     override fun execute(creep: Creep) {

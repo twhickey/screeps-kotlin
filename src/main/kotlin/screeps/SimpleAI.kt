@@ -101,9 +101,9 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
 
     val additionalUpgraders = when (storedEnergy) {
         in (0 .. 10000) -> 0
-        in (10000 .. 100000) -> 1
-        in (10000 .. 250000) -> 2
-        else -> (storedEnergy % 250000) + 2
+        in (10000 .. 50000) -> 1
+        in (50000 .. 100000) -> 2
+        else -> (storedEnergy / 100000) + 2
     }
 
     val neededUpgraders = when (spawn.room.controller?.ticksToDowngrade ?: 40000) {
@@ -214,25 +214,27 @@ private fun spawnCreep(spawn: StructureSpawn, mt: MinionType, body: Array<BodyPa
 private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn, neededStates: MutableMap<CreepState, Int>) {
 
     spawn.room.memory.debugMessages = false;
-    if ((Game.time % 20) != 0) {
+    if ((Game.time % 5) != 0) {
         return
     }
 
-    val newState = neededStates.entries.filter { it.value > 0 }.maxByOrNull { it.value } ?: return
+    val mostNeededStates = neededStates.entries.filter { it.value > 0 }.sortedByDescending { it.value }
 
-    console.log("Needed States: $newState")
+    console.log("Needed States: $mostNeededStates")
 
-    for (mt in MinionType.values()) {
-        if (mt.validStates.contains(newState.key)) {
-            val body = getCreepParts(mt, spawn.room.energyAvailable)
-            if (body.isNotEmpty()) {
-                val newStates = if (newState.key.refillState == CreepState.UNKNOWN) {
-                    Pair(newState.key, CreepState.IDLE)
-                } else {
-                    Pair(newState.key.refillState, newState.key)
+    for (newState in mostNeededStates) {
+        for (mt in MinionType.values()) {
+            if (mt.validStates.contains(newState.key)) {
+                val body = getCreepParts(mt, spawn.room.energyAvailable)
+                if (body.isNotEmpty()) {
+                    val newStates = if (newState.key.refillState == CreepState.UNKNOWN) {
+                        Pair(newState.key, CreepState.IDLE)
+                    } else {
+                        Pair(newState.key.refillState, newState.key)
+                    }
+                    spawnCreep(spawn, mt, body, newStates.first, newStates.second)
+                    break
                 }
-                spawnCreep(spawn, mt, body, newStates.first, newStates.second)
-                break
             }
         }
     }

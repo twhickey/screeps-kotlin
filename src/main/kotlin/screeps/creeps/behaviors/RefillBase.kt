@@ -119,5 +119,5 @@ abstract class RefillBase(val validSources: List<EnergySource>): Behavior() {
 object RefillForHaul: RefillBase(listOf(EnergySource.DROPPED, EnergySource.CONTAINER)) {
 }
 
-object RefillForTransfer : RefillBase(listOf(EnergySource.STORAGE, EnergySource.DROPPED, EnergySource.CONTAINER)) {
+object RefillForTransfer : RefillBase(listOf(EnergySource.STORAGE, EnergySource.DROPPED, EnergySource.CONTAINER, EnergySource.SOURCE)) {
 }

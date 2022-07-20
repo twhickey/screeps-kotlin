@@ -76,23 +76,54 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
         .map { it.unsafeCast<StructureContainer>()}
         .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
 
+    val availableEnergyFromStorage = spawn.room.find(FIND_STRUCTURES)
+        .filter { it.structureType == STRUCTURE_STORAGE }
+        .map { it.unsafeCast<StructureStorage>()}
+        .sumOf { it.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0 }
+
     val availableEnergyFromResources = spawn.room.find(FIND_DROPPED_RESOURCES)
         .filter { it.resourceType == RESOURCE_ENERGY }
         .sumOf {it.amount }
 
-    val availableEnergy = availableEnergyFromResources + availableEnergyFromContainers
+    val haulableEnergy = availableEnergyFromResources + availableEnergyFromContainers
+    val transferrableEnergy = availableEnergyFromStorage + availableEnergyFromResources
 
-    val currentCarry = creeps
-        .filter { (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == CreepState.HAUL) || ( it.memory.state == CreepState.HAUL ) }
+    val currentTransfer = creeps
+        .filter { (it.memory.state == CreepState.GETTING_ENERGY && it.memory.nextState == CreepState.TRANSFERRING_ENERGY) || ( it.memory.state == CreepState.TRANSFERRING_ENERGY ) }
         .sumOf { it.store.getCapacity() ?: 0}
 
-    val neededHarvesters = when (val energy = availableEnergy - currentCarry) {
+    val currentHaul = creeps
+        .filter { (it.memory.state == CreepState.FILLING_FOR_HAUL && it.memory.nextState == CreepState.HAUL) || ( it.memory.state == CreepState.HAUL ) }
+        .sumOf { it.store.getCapacity() ?: 0}
+
+    val hasStorage = Context.myStuctures.any { it.value.structureType == STRUCTURE_STORAGE }
+    val numContainers = Context.myStuctures.count { it.value.structureType == STRUCTURE_CONTAINER }
+
+    val provisionallyNeededHaulers = when (val energy = haulableEnergy - currentHaul) {
         in (Int.MIN_VALUE .. 100) -> 0
-        in (100 .. 1000) -> 1
-        in (1000 .. 2000) -> 2
-        in (2000 .. 5000) -> 4
-        else -> min(15, (energy / 800))
+        in (100 .. 1000) -> numContainers
+        in (1000 .. 2000) -> 2 * numContainers
+        in (2000 .. 5000) -> 4 * numContainers
+        else -> min(8 * numContainers, (energy / 800))
     }
+
+    val provisionallyNeededHarvesters = when (val energy = transferrableEnergy - currentTransfer) {
+        in (Int.MIN_VALUE .. 100) -> 2
+        in (100 .. 1000) -> 3
+        in (1000 .. 2000) -> 6
+        in (2000 .. 5000) -> 8
+        else -> min(16, (energy / 800))
+    }
+
+    val neededHarvesters = if (hasStorage) {
+        provisionallyNeededHarvesters
+    } else {
+        provisionallyNeededHaulers + provisionallyNeededHarvesters
+    }
+
+    val neededHaulers = if (hasStorage) provisionallyNeededHaulers else 0
+
+    console.log("haulableEnergy: $haulableEnergy; transferrableEnergy: $transferrableEnergy; neededHaulers = $neededHaulers; neededHarvesters = $neededHarvesters")
 
     val storedEnergy = spawn.room.find(FIND_MY_STRUCTURES)
         .filter { it.structureType == STRUCTURE_STORAGE }
@@ -128,8 +159,8 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
 
     val neededStates: MutableMap<CreepState, Int> = mutableMapOf(
         CreepState.BUILDING to supportedBuilders - activeCreeps(activeCreeps, CreepState.BUILDING),
-        CreepState.HAUL to neededHarvesters - activeCreeps(activeCreeps, CreepState.HAUL),
-        CreepState.TRANSFERRING_ENERGY to 2 - activeCreeps(activeCreeps, CreepState.TRANSFERRING_ENERGY),
+        CreepState.HAUL to neededHaulers - activeCreeps(activeCreeps, CreepState.HAUL),
+        CreepState.TRANSFERRING_ENERGY to neededHarvesters - activeCreeps(activeCreeps, CreepState.TRANSFERRING_ENERGY),
         CreepState.UPGRADING to neededUpgraders - activeCreeps(activeCreeps, CreepState.UPGRADING),
         CreepState.GUARDING to neededGuardians - activeCreeps(activeCreeps, CreepState.GUARDING),
         CreepState.MINE to minersSupported - activeCreeps(activeCreeps, CreepState.MINE),

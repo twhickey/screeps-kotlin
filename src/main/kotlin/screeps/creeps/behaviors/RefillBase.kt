@@ -8,13 +8,15 @@ import screeps.creeps.*
 abstract class RefillBase(val validSources: List<EnergySource>): Behavior() {
 
     override fun update(creep: Creep): CreepState {
-        if (creep.store[RESOURCE_ENERGY] < creep.store.getCapacity(RESOURCE_ENERGY)) {
-            return CreepState.getState(creep.memory.state)
+        val newState =  if (creep.store[RESOURCE_ENERGY] < creep.store.getCapacity(RESOURCE_ENERGY)) {
+            CreepState.getState(creep.memory.state)
         } else if (creep.memory.nextState != CreepState.UNKNOWN) {
-            return CreepState.getState(creep.memory.nextState)
+            CreepState.getState(creep.memory.nextState)
         } else {
-            return CreepState.TRANSFERRING_ENERGY
+            CreepState.TRANSFERRING_ENERGY
         }
+        //creep.sayMessage("RefillBase: newstate = $newState. Energy at ${creep.store[RESOURCE_ENERGY]} of ${creep.store.getCapacity(RESOURCE_ENERGY)} ")
+        return newState
      }
 
     override fun plan(creep: Creep) {

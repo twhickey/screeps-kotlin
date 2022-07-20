@@ -7,10 +7,12 @@ import screeps.creeps.*
 
 object Haul : Behavior() {
     override fun update(creep: Creep): CreepState {
-        return when (creep.store.getUsedCapacity(RESOURCE_ENERGY) ?: 0) {
+        val newState = when (creep.store[RESOURCE_ENERGY] ?: 0) {
             0 -> CreepState.IDLE
             else -> CreepState.HAUL
         }
+
+        return newState
     }
 
     override fun plan(creep: Creep) {

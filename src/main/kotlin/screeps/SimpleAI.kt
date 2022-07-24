@@ -97,7 +97,7 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
         .sumOf { it.store.getCapacity() ?: 0}
 
     val hasStorage = Context.myStuctures.any { it.value.structureType == STRUCTURE_STORAGE }
-    val numContainers = Context.myStuctures.count { it.value.structureType == STRUCTURE_CONTAINER }
+    val numContainers = spawn.room.find(FIND_STRUCTURES).count { it.structureType == STRUCTURE_CONTAINER }
 
     val provisionallyNeededHaulers = when (val energy = haulableEnergy - currentHaul) {
         in (Int.MIN_VALUE .. 100) -> 0
@@ -123,7 +123,7 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
 
     val neededHaulers = if (hasStorage) provisionallyNeededHaulers else 0
 
-    console.log("haulableEnergy: $haulableEnergy; transferrableEnergy: $transferrableEnergy; neededHaulers = $neededHaulers; neededHarvesters = $neededHarvesters")
+    // console.log("haulableEnergy: $haulableEnergy; transferrableEnergy: $transferrableEnergy; neededHaulers = $neededHaulers; neededHarvesters = $neededHarvesters; hasStorage = $hasStorage; currentTransfer = $currentTransfer; currentHaul = $currentHaul; provisionalHaulers = $provisionallyNeededHaulers; provisionalHarvesters = $provisionallyNeededHarvesters")
 
     val storedEnergy = spawn.room.find(FIND_MY_STRUCTURES)
         .filter { it.structureType == STRUCTURE_STORAGE }
@@ -184,7 +184,7 @@ private fun planCreeps(creeps: Array<Creep>, spawn: StructureSpawn): MutableMap<
             ac.memory.state = newState
             ac.memory.nextState = CreepState.IDLE
         }
-        console.log("Reassigned Idle Creep $ac to (${ac.memory.state}, ${ac.memory.nextState})")
+        // console.log("Reassigned Idle Creep $ac to (${ac.memory.state}, ${ac.memory.nextState})")
         neededStates[newState] = neededStates[newState]!! - 1
     }
     return neededStates
